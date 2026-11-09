@@ -201,9 +201,8 @@ async function sheetPaths(zip: JSZip): Promise<{ name: string; path: string }[]>
 // ---------------------------------------------------------------- API
 
 function baseUrl(): string {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const meta = (typeof import.meta !== 'undefined' ? import.meta : undefined) as any
-  return meta && meta.env && meta.env.BASE_URL ? meta.env.BASE_URL : '/'
+  // Escrito literalmente para o Vite substituir no build; no Node (testes) import.meta.env não existe.
+  return (import.meta.env?.BASE_URL as string | undefined) ?? '/'
 }
 
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'

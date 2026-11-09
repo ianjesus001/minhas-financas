@@ -57,13 +57,16 @@ export function setState(next: AppState | ((s: AppState) => AppState)) {
 
 export const getState = () => state
 
-export function useAppState(): AppState {
+/** Estado do app. Com `sel`, o seletor precisa devolver um valor estável (primitivo ou parte do estado). */
+export function useAppState(): AppState
+export function useAppState<T>(sel: (s: AppState) => T): T
+export function useAppState<T>(sel?: (s: AppState) => T): AppState | T {
   return useSyncExternalStore(
     (l) => {
       listeners.add(l)
       return () => listeners.delete(l)
     },
-    () => state,
+    () => (sel ? sel(state) : state),
   )
 }
 
@@ -86,7 +89,17 @@ export const updateConfig = (patch: Partial<Config>) => setState((s) => ({ ...s,
 export type Lancamento =
   | { tipo: 'gasto' | 'entrada'; data: ISODate; valor: number; categoria: string; descricao: string }
   | { tipo: 'cdi'; data: ISODate; valor: number; resgate: boolean; nota: string; noMes: boolean }
-  | { tipo: 'dolar'; data: ISODate; pagouBRL: number; recebeuUSD: number; onde: string; noMes: boolean }
+  | {
+      tipo: 'dolar'
+      data: ISODate
+      pagouBRL: number
+      recebeuUSD: number
+      onde: string
+      noMes: boolean
+      cambio?: number
+      taxas?: number
+      vet?: number
+    }
 
 /** Remove um lançamento (e o registro ligado a ele) pelo id de qualquer um dos lados. */
 function semLancamento(s: AppState, id: string): AppState {
@@ -127,7 +140,17 @@ export function salvarLancamento(l: Lancamento, idAntigo?: string) {
           valor: l.valor,
         })
     } else if (l.tipo === 'dolar') {
-      dolares.push({ id, data: l.data, onde: l.onde, pagouBRL: l.pagouBRL, recebeuUSD: l.recebeuUSD })
+      const opcional = (v?: number) => (v && v > 0 ? v : undefined)
+      dolares.push({
+        id,
+        data: l.data,
+        onde: l.onde,
+        pagouBRL: l.pagouBRL,
+        recebeuUSD: l.recebeuUSD,
+        cambio: opcional(l.cambio),
+        taxas: opcional(l.taxas),
+        vet: opcional(l.vet),
+      })
       if (l.noMes)
         movimentos.push({
           id: novoId(),
@@ -154,7 +177,10 @@ export function lancamentoDe(s: AppState, id: string): { lanc: Lancamento; id: s
   const d = s.dolares.find((x) => x.id === link)
   if (d) {
     const noMes = s.movimentos.some((m) => m.linkId === d.id)
-    return { id: d.id, lanc: { tipo: 'dolar', data: d.data, pagouBRL: d.pagouBRL, recebeuUSD: d.recebeuUSD, onde: d.onde, noMes } }
+    return {
+      id: d.id,
+      lanc: { tipo: 'dolar', data: d.data, pagouBRL: d.pagouBRL, recebeuUSD: d.recebeuUSD, onde: d.onde, noMes, cambio: d.cambio, taxas: d.taxas, vet: d.vet },
+    }
   }
   if (mov) {
     const entrada = categoria(mov.categoria)?.tipo === 'Entrada'

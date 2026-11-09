@@ -25,8 +25,16 @@ export interface CompraDolar {
   id: string
   data: ISODate
   onde: string
+  /** Tudo o que saiu da conta, já com tarifa e IOF. */
   pagouBRL: number
   recebeuUSD: number
+  // Campos opcionais do comprovante (ex.: Wise)
+  /** Câmbio usado na conversão, "1 USD = x BRL" (sem taxas). */
+  cambio?: number
+  /** "Total fees and taxes": tarifa + IOF, em R$ (já incluído em pagouBRL). */
+  taxas?: number
+  /** VET / "Effective rate" do comprovante (R$ por US$, com tudo). */
+  vet?: number
 }
 
 export interface Config {

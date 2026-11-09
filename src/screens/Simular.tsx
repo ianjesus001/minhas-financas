@@ -1,12 +1,13 @@
 import { simular, taxas } from '../calc'
 import { fmtBRL, fmtPct } from '../format'
+import { useMercado } from '../mercado'
 import { updateConfig, useAppState } from '../store'
 import { Header, Info, MoneyInput, SectionTitle } from '../ui'
 
 export function Simular() {
   const s = useAppState()
   const { simInicial, simMensal, simMeses } = s.config
-  const t = taxas(s.config)
+  const t = taxas(s.config, useMercado())
   const r = simular(simInicial, simMensal, simMeses, t.mes)
   const anos = Math.floor(r.n / 12)
   const meses = r.n % 12

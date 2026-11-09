@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { hoje, mesKey, nomeMes, resumoCDI, resumoDolar, resumoMes, somaMes } from '../calc'
 import { categoria } from '../categorias'
 import { fmtBRL, fmtData, fmtPct0, fmtUSD } from '../format'
+import { useMercado } from '../mercado'
+import { isIOS, isInstalado } from '../plataforma'
 import { useAppState } from '../store'
 import type { Movimento } from '../types'
 import { Donut, Empty, Header, Info, MovRow, Progress, SectionTitle, Stat } from '../ui'
@@ -16,8 +18,9 @@ const DICAS = [
 
 export function Inicio({ onEdit, onSettings, onGo }: { onEdit: (id: string) => void; onSettings: () => void; onGo: (tab: 'mes' | 'cdi' | 'dolar' | 'simular') => void }) {
   const s = useAppState()
-  const cdi = resumoCDI(s)
-  const dol = resumoDolar(s)
+  const m = useMercado()
+  const cdi = resumoCDI(s, m)
+  const dol = resumoDolar(s, m)
   const mes = resumoMes(s.movimentos, mesKey(hoje()))
   const total = cdi.saldo + dol.vale
   const recentes = [...s.movimentos].sort((a, b) => b.data.localeCompare(a.data)).slice(0, 5)
@@ -34,6 +37,8 @@ export function Inicio({ onEdit, onSettings, onGo }: { onEdit: (id: string) => v
           </button>
         }
       />
+
+      <AvisoInstalar />
 
       <section className="rounded-[1.75rem] bg-gradient-to-br from-teal to-purple p-5 text-white shadow-lg shadow-purple/20">
         <p className="text-sm text-white/80">💎 Total guardado</p>
@@ -200,6 +205,36 @@ export function Mes({ onEdit }: { onEdit: (id: string) => void }) {
       ) : (
         <Empty emoji="🗓️" title="Nenhum registro neste mês" text="Use o botão + para anotar entradas e gastos." />
       )}
+    </div>
+  )
+}
+
+/** No iPhone, o Safari e o app da tela de início guardam dados separados: instalar antes de usar. */
+export function AvisoInstalar() {
+  if (isInstalado()) return null
+  const ios = isIOS()
+  return (
+    <div className="mb-4 rounded-3xl border-2 border-gold bg-gold-soft p-4 text-sm leading-relaxed">
+      <p className="mb-1 font-bold">📲 Instale o app antes de começar</p>
+      {ios ? (
+        <ol className="list-decimal space-y-0.5 pl-5">
+          <li>
+            Abra este link no <b>Safari</b>
+          </li>
+          <li>
+            Toque em <b>Compartilhar</b> (o quadrado com a seta ↑)
+          </li>
+          <li>
+            Escolha <b>"Adicionar à Tela de Início"</b>
+          </li>
+          <li>Use sempre pelo ícone novo 💜</li>
+        </ol>
+      ) : (
+        <p>
+          No Chrome, toque em <b>⋮</b> → <b>"Instalar app"</b> e use sempre pelo ícone.
+        </p>
+      )}
+      {ios && <p className="mt-2 text-xs text-muted">O que você anotar aqui no Safari não aparece no app instalado.</p>}
     </div>
   )
 }

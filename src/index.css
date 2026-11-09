@@ -85,3 +85,33 @@ body {
 input[type='range'] {
   accent-color: var(--color-purple);
 }
+
+@layer base {
+/* ---------- iPhone / Safari ---------- */
+button,
+a,
+summary,
+label {
+  touch-action: manipulation; /* sem zoom de toque duplo */
+}
+summary::-webkit-details-marker {
+  display: none;
+}
+input,
+textarea,
+select {
+  font-size: 16px; /* abaixo disso o iOS dá zoom ao focar */
+}
+input[type='date'] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 3.25rem;
+  display: block;
+}
+input[type='date']::-webkit-date-and-time-value {
+  text-align: left;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+}
+}

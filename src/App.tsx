@@ -4,7 +4,8 @@ import { Ajustes } from './screens/Ajustes'
 import { Inicio, Mes } from './screens/Inicio'
 import { CDI, Dolar } from './screens/Investimentos'
 import { Simular } from './screens/Simular'
-import { getState, lancamentoDe, primeiraVez, updateConfig, type Lancamento } from './store'
+import { atualizarMercado } from './mercado'
+import { getState, lancamentoDe, primeiraVez, updateConfig, useAppState, type Lancamento } from './store'
 import { Button, Sheet, inputCls } from './ui'
 
 type Tab = 'inicio' | 'mes' | 'cdi' | 'dolar' | 'simular' | 'ajustes'
@@ -26,6 +27,17 @@ export default function App() {
   useEffect(() => {
     window.scrollTo({ top: 0 })
   }, [tab])
+
+  // CDI e dólar: busca ao abrir, ao voltar para o app e quando muda alguma data de depósito/compra.
+  const datas = useAppState((s) => [...s.cdi.map((c) => c.data), ...s.dolares.map((d) => d.data)].sort()[0] ?? '')
+  useEffect(() => {
+    atualizarMercado(getState())
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') atualizarMercado(getState())
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [datas])
 
   const onEdit = useCallback((id: string) => {
     const e = lancamentoDe(getState(), id)

@@ -39,6 +39,9 @@ function Form({ onClose, editar }: { onClose: () => void; editar: { id: string; 
   const [usd, setUsd] = useState(l?.tipo === 'dolar' ? l.recebeuUSD : 0)
   const [brl, setBrl] = useState(l?.tipo === 'dolar' ? l.pagouBRL : 0)
   const [noMes, setNoMes] = useState(l && 'noMes' in l ? l.noMes : true)
+  const [cambio, setCambio] = useState(l?.tipo === 'dolar' ? (l.cambio ?? 0) : 0)
+  const [taxas, setTaxas] = useState(l?.tipo === 'dolar' ? (l.taxas ?? 0) : 0)
+  const [vet, setVet] = useState(l?.tipo === 'dolar' ? (l.vet ?? 0) : 0)
 
   if (!tipo) {
     return (
@@ -66,7 +69,7 @@ function Form({ onClose, editar }: { onClose: () => void; editar: { id: string; 
     if (!ok) return
     let lanc: Lancamento
     if (tipo === 'gasto' || tipo === 'entrada') lanc = { tipo, data, valor, categoria, descricao: texto.trim() }
-    else if (tipo === 'dolar') lanc = { tipo: 'dolar', data, pagouBRL: brl, recebeuUSD: usd, onde: texto.trim(), noMes }
+    else if (tipo === 'dolar') lanc = { tipo: 'dolar', data, pagouBRL: brl, recebeuUSD: usd, onde: texto.trim(), noMes, cambio, taxas, vet }
     else lanc = { tipo: 'cdi', data, valor, resgate: tipo === 'resgatar', nota: texto.trim(), noMes }
     salvarLancamento(lanc, editar?.id)
     navigator.vibrate?.(15)
@@ -90,17 +93,40 @@ function Form({ onClose, editar }: { onClose: () => void; editar: { id: string; 
 
       {tipo === 'dolar' ? (
         <>
-          <Field label="Quanto saiu da sua conta (com taxas e IOF)">
+          <Field label="Saiu da conta (BRL)" hint="No Wise é o valor de cima, em reais (já com taxas e IOF).">
             <MoneyInput value={brl} onChange={setBrl} big autoFocus={!editar} />
           </Field>
-          <Field label="Quantos dólares você recebeu">
+          <Field label="Recebi (USD)" hint="No Wise é o valor de baixo, em dólares.">
             <MoneyInput value={usd} onChange={setUsd} prefix="US$" big />
           </Field>
           {brl > 0 && usd > 0 && (
             <p className="-mt-2 mb-4 rounded-2xl bg-blue-soft px-4 py-3 text-sm">
-              Você pagou <b className="num">{fmtBRL(brl / usd)}</b> por cada dólar.
+              Cada dólar te custou <b className="num">R$ {(brl / usd).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</b> com tudo
+              incluído (esse é o VET).
             </p>
           )}
+          <details className="mb-4 rounded-2xl border border-line" open={!!(cambio || taxas || vet)}>
+            <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-semibold">
+              📄 Mais dados do comprovante (opcional)
+              <span className="text-muted">⌄</span>
+            </summary>
+            <div className="px-4 pb-1">
+              <Field label="Câmbio: 1 USD = ? BRL" hint="No Wise aparece no topo, ex: 1 USD = 5.3544 BRL.">
+                <MoneyInput value={cambio} onChange={setCambio} prefix="R$" decimals={4} />
+              </Field>
+              <Field label="Taxas e impostos (Total fees and taxes)">
+                <MoneyInput value={taxas} onChange={setTaxas} />
+              </Field>
+              <Field label="VET (Effective rate)" hint="Se não preencher, o app calcula sozinho.">
+                <MoneyInput value={vet} onChange={setVet} prefix="R$" decimals={4} />
+              </Field>
+              {cambio > 0 && usd > 0 && brl > 0 && Math.abs(usd * cambio + (taxas || brl - usd * cambio) - brl) > 0.05 && (
+                <p className="mb-4 rounded-2xl bg-gold-soft px-4 py-3 text-xs">
+                  ⚠️ Os números não fecham: {fmtBRL(usd * cambio)} convertidos + {fmtBRL(taxas)} de taxas ≠ {fmtBRL(brl)}. Confira o comprovante.
+                </p>
+              )}
+            </div>
+          </details>
           <Field label="Onde comprou (opcional)">
             <input className={inputCls} value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Wise, Nomad, banco..." />
           </Field>

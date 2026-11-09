@@ -1,24 +1,41 @@
 import { useState } from 'react'
-import { hoje, resumoCDI, resumoDolar, taxas } from '../calc'
+import { hoje, resumoCDI, resumoDolar, taxas, type CompraAnalise } from '../calc'
 import { fmtBRL, fmtData, fmtPct, fmtPct0, fmtUSD } from '../format'
+import { useMercado, type Mercado } from '../mercado'
 import { updateConfig, useAppState } from '../store'
 import { Button, Details, Donut, Empty, Field, Header, Info, MoneyInput, SectionTitle, Sheet, Stat } from '../ui'
 
+const fmtCot = (v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`
+const sinal = (v: number) => (v > 0 ? '+' : v < 0 ? '−' : '')
+const fmtBRLs = (v: number) => `${sinal(v)} ${fmtBRL(Math.abs(v))}`.trim()
+const tom = (v: number) => (v > 0.004 ? 'good' : v < -0.004 ? 'bad' : undefined)
+
+export function StatusMercado({ m }: { m: Mercado }) {
+  if (m.erro) return <p className="mb-3 rounded-2xl bg-gold-soft px-4 py-2.5 text-xs">📴 {m.erro}</p>
+  return null
+}
+
+// =====================================================================
+// CDI
+// =====================================================================
+
 export function CDI({ onEdit }: { onEdit: (id: string) => void }) {
   const s = useAppState()
-  const r = resumoCDI(s)
-  const t = taxas(s.config)
-  const [editSaldo, setEditSaldo] = useState(false)
+  const m = useMercado()
+  const r = resumoCDI(s, m)
+  const t = taxas(s.config, m)
+  const [conferir, setConferir] = useState(false)
   const lista = [...s.cdi].sort((a, b) => b.data.localeCompare(a.data))
 
   return (
     <div>
       <Header title="Meu CDI" subtitle="Meu dinheiro rendendo 🌱" />
+      <StatusMercado m={m} />
       <section className="rounded-[1.75rem] bg-teal p-5 text-white shadow-lg shadow-teal/25">
         <p className="text-sm text-white/80">Tenho no CDI</p>
         <p className="num mt-1 text-[2.4rem] leading-none font-extrabold">{fmtBRL(r.saldo)}</p>
         <p className="mt-2 text-xs text-white/80">
-          {r.usaApp && s.config.saldoAppData ? `Saldo do app em ${fmtData(s.config.saldoAppData)}` : 'Estimativa da planilha'}
+          {r.temSerie ? '📡 Calculado com o CDI oficial de cada dia' : 'Estimativa (sem internet ainda)'}
         </p>
         <div className="mt-4 grid grid-cols-2 gap-2">
           <div className="rounded-2xl bg-white/15 p-3">
@@ -30,13 +47,20 @@ export function CDI({ onEdit }: { onEdit: (id: string) => void }) {
             <p className="num font-bold">{fmtBRL(r.colocado)}</p>
           </div>
         </div>
-        <button onClick={() => setEditSaldo(true)} className="press mt-3 w-full rounded-2xl bg-white py-3 text-sm font-bold text-teal">
-          📲 Atualizar com o saldo do app
+        <button onClick={() => setConferir(true)} className="press mt-3 w-full rounded-2xl bg-white py-3 text-sm font-bold text-teal">
+          🔍 Conferir com o app do banco
         </button>
       </section>
 
+      {r.diferencaApp !== null && s.config.saldoAppData && (
+        <p className="mt-3 rounded-2xl bg-white px-4 py-3 text-sm shadow-sm">
+          Em {fmtData(s.config.saldoAppData)} o banco mostrava <b className="num">{fmtBRL(s.config.saldoApp!)}</b>.{' '}
+          {Math.abs(r.diferencaApp) < 0.5 ? '✅ Bate com o app!' : `Diferença de ${fmtBRL(Math.abs(r.diferencaApp))} — confira se falta anotar algo.`}
+        </p>
+      )}
+
       <div className="card mt-4 grid grid-cols-2 gap-4 p-5">
-        <Stat label="Rende por ano" value={fmtPct(t.anual)} hint={`${fmtPct0(s.config.pctCdi)} do CDI`} />
+        <Stat label="CDI hoje (ao ano)" value={fmtPct(t.cdi)} hint={`você recebe ${fmtPct0(s.config.pctCdi)} dele`} />
         <Stat label="A cada R$ 1.000, por mês" value={`+ ${fmtBRL(1000 * t.mes)}`} tone="good" />
         <Stat label="Se resgatar tudo hoje" value={fmtBRL(r.liquido)} hint="já sem imposto (aprox.)" />
         <Stat label="Imposto (IR) aprox." value={fmtBRL(r.ir)} tone="muted" />
@@ -69,9 +93,12 @@ export function CDI({ onEdit }: { onEdit: (id: string) => void }) {
       <SectionTitle>Entenda</SectionTitle>
       <div className="space-y-3">
         <Details summary="🤔 O que é o CDI?">
-          É a taxa que os bancos usam para emprestar dinheiro entre eles. Na prática, é a "régua" de quanto seu dinheiro rende. Com o CDI em{' '}
-          {fmtPct(s.config.cdiAnual)} ao ano, R$ 1.000 viram ≈ {fmtBRL(1000 * (1 + t.anual))} em um ano. Na caixinha do Nubank (100% do CDI) você pode
-          tirar quando quiser, e o dinheiro tem garantia do FGC até R$ 250 mil.
+          É a taxa que os bancos usam para emprestar dinheiro entre eles, e a "régua" de quanto seu dinheiro rende. Hoje está em {fmtPct(t.cdi)} ao ano: R$ 1.000 viram ≈{' '}
+          {fmtBRL(1000 * (1 + t.anual))} em um ano. Na caixinha do Nubank (100% do CDI) você pode tirar quando quiser, e o dinheiro tem garantia do FGC até R$ 250 mil.
+        </Details>
+        <Details summary="📡 Como o app calcula?">
+          O app busca no Banco Central o CDI de cada dia útil e aplica no seu dinheiro, dia por dia, desde a data de cada depósito, igual ao banco. Se a Selic mudar, o que já
+          rendeu não muda: só os próximos dias usam a taxa nova. Feriados e fins de semana não rendem.
         </Details>
         <Details summary="🧾 Como funciona o imposto?">
           <p className="mb-3">O imposto é cobrado só sobre o que rendeu, nunca sobre o que você colocou. O banco desconta sozinho na hora do resgate.</p>
@@ -92,38 +119,36 @@ export function CDI({ onEdit }: { onEdit: (id: string) => void }) {
           </table>
           <p className="mt-3 text-muted">Se tirar antes de 30 dias, também tem IOF (só sobre o rendimento).</p>
         </Details>
-        <Details summary="📲 Por que atualizar com o saldo do app?">
-          O app faz uma estimativa com a taxa atual. O saldo do Nubank é o valor real, e já considera as mudanças da Selic. Atualize uma vez por mês e os números ficam
-          exatos.
-        </Details>
       </div>
 
-      <SaldoSheet open={editSaldo} onClose={() => setEditSaldo(false)} estimado={r.estimado} />
+      <Sheet open={conferir} onClose={() => setConferir(false)} title="Conferir com o banco">
+        {conferir && <ConferirForm onClose={() => setConferir(false)} calculado={r.saldo} />}
+      </Sheet>
     </div>
   )
 }
 
-function SaldoSheet({ open, onClose, estimado }: { open: boolean; onClose: () => void; estimado: number }) {
-  return (
-    <Sheet open={open} onClose={onClose} title="Saldo do app">
-      {open && <SaldoForm onClose={onClose} estimado={estimado} />}
-    </Sheet>
-  )
-}
-
-function SaldoForm({ onClose, estimado }: { onClose: () => void; estimado: number }) {
+function ConferirForm({ onClose, calculado }: { onClose: () => void; calculado: number }) {
   const s = useAppState()
-  const [v, setV] = useState(s.config.saldoApp ?? 0)
+  const [v, setV] = useState(0)
+  const dif = v > 0 ? v - calculado : null
   return (
     <div>
       <Info tone="teal">
-        Abra o app do banco, veja quanto tem na caixinha e escreva aqui. A estimativa atual é <b className="num">{fmtBRL(estimado)}</b>.
+        O app calculou <b className="num">{fmtBRL(calculado)}</b>. Abra o app do banco, veja quanto tem na caixinha e escreva aqui para conferir.
       </Info>
       <div className="mt-4">
-        <Field label="Quanto aparece no app">
+        <Field label="Quanto aparece no app do banco">
           <MoneyInput value={v} onChange={setV} big autoFocus />
         </Field>
       </div>
+      {dif !== null && (
+        <p className="mb-4 rounded-2xl bg-bg px-4 py-3 text-sm">
+          {Math.abs(dif) < 0.5
+            ? '✅ Bate! A diferença é de centavos (arredondamento do banco).'
+            : `Diferença de ${fmtBRL(Math.abs(dif))}. Talvez falte anotar algum depósito ou resgate, ou a data de algum esteja diferente.`}
+        </p>
+      )}
       <div className="flex flex-col gap-2 pb-2">
         <Button
           disabled={!(v > 0)}
@@ -132,7 +157,7 @@ function SaldoForm({ onClose, estimado }: { onClose: () => void; estimado: numbe
             onClose()
           }}
         >
-          Salvar saldo
+          Salvar conferência
         </Button>
         {s.config.saldoApp !== null && (
           <Button
@@ -142,7 +167,7 @@ function SaldoForm({ onClose, estimado }: { onClose: () => void; estimado: numbe
               onClose()
             }}
           >
-            Voltar a usar a estimativa
+            Apagar conferência
           </Button>
         )}
       </div>
@@ -150,114 +175,211 @@ function SaldoForm({ onClose, estimado }: { onClose: () => void; estimado: numbe
   )
 }
 
+// =====================================================================
+// Dólar
+// =====================================================================
+
 export function Dolar({ onEdit }: { onEdit: (id: string) => void }) {
   const s = useAppState()
-  const r = resumoDolar(s)
-  const [editCot, setEditCot] = useState(false)
-  const lista = [...s.dolares].sort((a, b) => b.data.localeCompare(a.data))
-  const cot = s.config.cotacaoDolar
+  const m = useMercado()
+  const r = resumoDolar(s, m)
+  const [editMeta, setEditMeta] = useState(false)
+  const lista = [...r.compras].sort((a, b) => b.compra.data.localeCompare(a.compra.data))
+  const quando =
+    r.cot.fonte === 'aovivo' && r.cot.quando
+      ? `ao vivo · ${new Date(r.cot.quando).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+      : r.cot.fonte === 'ptax' && r.cot.quando
+        ? `PTAX de ${fmtData(r.cot.quando)}`
+        : 'valor manual'
 
   return (
     <div>
       <Header title="Meus Dólares" subtitle="Minha reserva em moeda forte 💵" />
+      <StatusMercado m={m} />
       <section className="rounded-[1.75rem] bg-blue p-5 text-white shadow-lg shadow-blue/25">
         <p className="text-sm text-white/80">Tenho em dólares</p>
         <p className="num mt-1 text-[2.4rem] leading-none font-extrabold">{fmtUSD(r.usd)}</p>
         <p className="num mt-2 text-sm text-white/85">≈ {fmtBRL(r.vale)} hoje</p>
-        <button onClick={() => setEditCot(true)} className="press mt-4 flex w-full items-center justify-between rounded-2xl bg-white/15 px-4 py-3 text-left">
+        <div className="mt-4 flex items-center justify-between rounded-2xl bg-white/15 px-4 py-3">
           <span>
-            <span className="block text-xs text-white/80">Cotação usada ({fmtData(s.config.cotacaoData)})</span>
-            <span className="num font-bold">{fmtBRL(cot)}</span>
+            <span className="block text-xs text-white/80">Dólar agora</span>
+            <span className="num font-bold">{fmtCot(r.cot.valor)}</span>
           </span>
-          <span className="rounded-xl bg-white px-3 py-1.5 text-sm font-bold text-blue">Atualizar</span>
-        </button>
+          <span className="text-right text-xs text-white/80">{quando}</span>
+        </div>
       </section>
 
+      {r.usd > 0 && (
+        <>
+          <SectionTitle>Meu resultado</SectionTitle>
+          <div className="card p-5">
+            <p className="text-sm text-muted">Valem hoje − saiu da minha conta</p>
+            <p className={`num text-3xl font-extrabold ${r.ganho >= 0 ? 'text-good' : 'text-bad'}`}>
+              {fmtBRLs(r.ganho)} <span className="text-base font-bold">({sinal(r.ganhoPct)}{fmtPct(Math.abs(r.ganhoPct))})</span>
+            </p>
+            <div className="mt-4 space-y-2.5 text-sm">
+              <Linha label="📈 Variação do dólar desde a compra" valor={r.variacao} />
+              <Linha label="💸 Custo das taxas (tarifa, IOF, spread)" valor={-r.custoTaxas} />
+              <div className="border-t border-line pt-2.5">
+                <Linha label="🟰 Resultado" valor={r.ganho} forte />
+              </div>
+            </div>
+            <div className="mt-4 rounded-2xl bg-teal-soft px-4 py-3 text-sm">
+              🌱 Se esses {fmtBRL(r.pago)} tivessem ficado no CDI, hoje seriam <b className="num">{fmtBRL(r.seCDI)}</b>
+              {r.vale >= r.seCDI ? ' — o dólar está ganhando. 💪' : ` — o CDI estaria ${fmtBRL(r.seCDI - r.vale)} na frente.`}
+            </div>
+          </div>
+          <GraficoDolar m={m} compras={r.compras} hoje={r.cot.valor} />
+        </>
+      )}
+
       <div className="card mt-4 flex items-center gap-5 p-5">
-        <Donut parts={[{ value: r.usd, color: 'var(--color-gold)' }, { value: r.falta, color: 'var(--color-line)' }]} size={104} stroke={12}>
+        <Donut parts={[{ value: r.usd, color: 'var(--color-gold)' }, { value: r.falta, color: 'var(--color-line)' }]} size={96} stroke={12}>
           <span className="num text-lg font-extrabold">{fmtPct0(r.metaPct)}</span>
         </Donut>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-sm text-muted">🎯 Minha meta</p>
           <p className="num text-xl font-bold">{fmtUSD(s.config.metaUSD)}</p>
           <p className="num text-sm text-muted">{r.falta > 0 ? `Faltam ${fmtUSD(r.falta)}` : 'Meta batida! 🎉'}</p>
         </div>
+        <button onClick={() => setEditMeta(true)} className="press rounded-xl bg-bg px-3 py-2 text-sm font-semibold">
+          Mudar
+        </button>
       </div>
-
-      {r.usd > 0 && (
-        <div className="card mt-4 grid grid-cols-2 gap-4 p-5">
-          <Stat label="Paguei no total" value={fmtBRL(r.pago)} />
-          <Stat label="Cotação média que paguei" value={fmtBRL(r.media)} />
-          <Stat label="Ganhei / perdi" value={fmtBRL(r.ganho)} tone={r.ganho >= 0 ? 'good' : 'bad'} />
-          <Stat label="Em %" value={fmtPct(r.ganhoPct)} tone={r.ganho >= 0 ? 'good' : 'bad'} />
-        </div>
-      )}
 
       <SectionTitle>Minhas compras</SectionTitle>
       {lista.length ? (
-        <div className="card divide-y divide-line overflow-hidden">
-          {lista.map((d) => (
-            <button key={d.id} onClick={() => onEdit(d.id)} className="press flex w-full items-center gap-3 px-4 py-3 text-left">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-blue-soft text-xl">💵</span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-semibold">{d.onde || 'Compra de dólar'}</span>
-                <span className="num block text-xs text-muted">
-                  {fmtData(d.data, { day: '2-digit', month: 'short', year: 'numeric' })} · {fmtBRL(d.pagouBRL / d.recebeuUSD)}/US$
-                </span>
-              </span>
-              <span className="text-right">
-                <span className="num block font-bold text-blue">{fmtUSD(d.recebeuUSD)}</span>
-                <span className="num block text-xs text-muted">{fmtBRL(d.pagouBRL)}</span>
-              </span>
-            </button>
+        <div className="space-y-3">
+          {lista.map((a) => (
+            <CompraCard key={a.compra.id} a={a} onClick={() => onEdit(a.compra.id)} />
           ))}
         </div>
       ) : (
-        <Empty emoji="💵" title="Nenhuma compra ainda" text="Toque em + → Comprei dólar e anote quanto pagou e quanto recebeu." />
+        <Empty emoji="💵" title="Nenhuma compra ainda" text="Toque em + → Comprei dólar e copie os valores do comprovante." />
       )}
 
       <SectionTitle>Entenda</SectionTitle>
       <div className="space-y-3">
-        <Details summary="🤔 Por que a cotação que paguei é maior?">
-          A cotação do Google é o dólar "comercial", sem taxas. Quando você compra, paga também IOF e a taxa do app (spread). Por isso anote sempre o total que saiu da sua
-          conta: assim você vê o custo real. Compare apps: a diferença pode ser grande.
+        <Details summary="💸 O que é o custo das taxas?">
+          É quanto você pagou acima do dólar "de mercado" do dia (o câmbio do comprovante ou, se não tiver, o dólar oficial PTAX do Banco Central): tarifa do app, IOF e
+          spread. Esse custo se paga quando o dólar sobe. O VET do comprovante já mostra o custo total por dólar.
         </Details>
         <Details summary="📉📈 E se o dólar cair?">
           O dólar sobe e desce todo dia. Se hoje estiver mais barato do que você pagou, aparece em vermelho, mas você só perde de verdade se vender. Comprar um pouco todo
           mês ajuda a fazer uma média.
         </Details>
+        <Details summary="🌱 Por que comparar com o CDI?">
+          Para você ver o custo da escolha: o real no CDI rende todo dia; o dólar protege contra a desvalorização do real. Não existe certo ou errado, é bom ter os dois.
+        </Details>
       </div>
 
-      <CotacaoSheet open={editCot} onClose={() => setEditCot(false)} />
+      <Sheet open={editMeta} onClose={() => setEditMeta(false)} title="Minha meta">
+        {editMeta && <MetaForm onClose={() => setEditMeta(false)} />}
+      </Sheet>
     </div>
   )
 }
 
-function CotacaoSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+function Linha({ label, valor, forte }: { label: string; valor: number; forte?: boolean }) {
+  const t = tom(valor)
   return (
-    <Sheet open={open} onClose={onClose} title="Dólar">
-      {open && <CotacaoForm onClose={onClose} />}
-    </Sheet>
+    <div className="flex items-center justify-between gap-3">
+      <span className={forte ? 'font-bold' : ''}>{label}</span>
+      <span className={`num shrink-0 font-bold ${t === 'good' ? 'text-good' : t === 'bad' ? 'text-bad' : ''}`}>{fmtBRLs(valor)}</span>
+    </div>
   )
 }
 
-function CotacaoForm({ onClose }: { onClose: () => void }) {
+function CompraCard({ a, onClick }: { a: CompraAnalise; onClick: () => void }) {
+  const c = a.compra
+  return (
+    <button onClick={onClick} className="press card block w-full p-4 text-left">
+      <div className="flex items-center gap-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-blue-soft text-xl">💵</span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-semibold">{c.onde || 'Compra de dólar'}</span>
+          <span className="block text-xs text-muted">{fmtData(c.data, { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+        </span>
+        <span className="text-right">
+          <span className="num block font-bold text-blue">{fmtUSD(c.recebeuUSD)}</span>
+          <span className="num block text-xs text-muted">{fmtBRL(c.pagouBRL)}</span>
+        </span>
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-2 rounded-2xl bg-bg p-3 text-xs">
+        <div>
+          <p className="text-muted">Paguei (VET)</p>
+          <p className="num font-bold">{fmtCot(a.vet)}</p>
+        </div>
+        <div>
+          <p className="text-muted">{a.fonteDia === 'comprovante' ? 'Câmbio do dia' : 'PTAX do dia'}</p>
+          <p className="num font-bold">{a.dolarDia ? fmtCot(a.dolarDia) : '—'}</p>
+        </div>
+        <div>
+          <p className="text-muted">Taxas</p>
+          <p className="num font-bold">{a.custoTaxasPct !== null ? fmtPct(a.custoTaxasPct) : '—'}</p>
+        </div>
+      </div>
+      <div className="mt-2 flex items-center justify-between px-1 text-sm">
+        <span className="text-muted">
+          Hoje vale <span className="num">{fmtBRL(a.valeHoje)}</span>
+        </span>
+        <span className={`num font-bold ${a.resultado >= 0 ? 'text-good' : 'text-bad'}`}>{fmtBRLs(a.resultado)}</span>
+      </div>
+      {c.taxas ? <p className="mt-1 px-1 text-xs text-muted">Taxas e impostos do comprovante: {fmtBRL(c.taxas)}</p> : null}
+    </button>
+  )
+}
+
+function GraficoDolar({ m, compras, hoje: cotHoje }: { m: Mercado; compras: CompraAnalise[]; hoje: number }) {
+  const primeira = compras.reduce((a, c) => (c.compra.data < a ? c.compra.data : a), '9999')
+  const pontos = Object.entries(m.ptax)
+    .filter(([d]) => d >= primeira)
+    .sort(([a], [b]) => a.localeCompare(b))
+  if (pontos.length < 2) return null
+  const serie = [...pontos, ['agora', cotHoje] as [string, number]]
+  const vals = serie.map(([, v]) => v).concat(compras.map((c) => c.vet))
+  const min = Math.min(...vals) * 0.995
+  const max = Math.max(...vals) * 1.005
+  const W = 320
+  const H = 120
+  const x = (i: number) => (i / (serie.length - 1)) * W
+  const y = (v: number) => H - ((v - min) / (max - min)) * H
+  const idx = (d: string) => Math.max(0, serie.findIndex(([sd]) => sd >= d))
+  const path = serie.map(([, v], i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
+  return (
+    <div className="card mt-4 p-5">
+      <p className="mb-1 text-sm font-semibold">Dólar desde a minha primeira compra</p>
+      <p className="mb-3 text-xs text-muted">
+        Linha: dólar oficial · <span className="text-coral">●</span> quanto eu paguei (com taxas)
+      </p>
+      <svg viewBox={`-6 -6 ${W + 12} ${H + 12}`} className="h-36 w-full overflow-visible">
+        <path d={`${path} L${W},${H} L0,${H} Z`} fill="var(--color-blue-soft)" />
+        <path d={path} fill="none" stroke="var(--color-blue)" strokeWidth="2.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+        {compras.map((c) => (
+          <circle key={c.compra.id} cx={x(idx(c.compra.data))} cy={y(c.vet)} r="5" fill="var(--color-coral)" stroke="white" strokeWidth="2" />
+        ))}
+      </svg>
+      <div className="mt-1 flex justify-between text-[11px] text-muted">
+        <span>{fmtData(pontos[0][0])}</span>
+        <span>hoje {fmtCot(cotHoje)}</span>
+      </div>
+    </div>
+  )
+}
+
+function MetaForm({ onClose }: { onClose: () => void }) {
   const s = useAppState()
-  const [v, setV] = useState(s.config.cotacaoDolar)
   const [meta, setMeta] = useState(s.config.metaUSD)
   return (
     <div>
-      <Field label="Cotação de hoje (R$ por US$ 1)" hint='Pesquise "dólar hoje" no Google ou veja no app onde você compra.'>
-        <MoneyInput value={v} onChange={setV} big autoFocus />
-      </Field>
       <Field label="Minha meta em dólares">
-        <MoneyInput value={meta} onChange={setMeta} prefix="US$" />
+        <MoneyInput value={meta} onChange={setMeta} prefix="US$" big autoFocus />
       </Field>
       <div className="pb-2">
         <Button
-          disabled={!(v > 0)}
+          disabled={!(meta > 0)}
           onClick={() => {
-            updateConfig({ cotacaoDolar: v, cotacaoData: hoje(), metaUSD: meta > 0 ? meta : s.config.metaUSD })
+            updateConfig({ metaUSD: meta })
             onClose()
           }}
         >

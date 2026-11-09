@@ -3,3 +3,4 @@ dist
 tools/out-test.xlsx
 .claude
 tsconfig.tsbuildinfo
+tools/shots
