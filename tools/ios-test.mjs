@@ -72,7 +72,8 @@ await anotar('Gastei', async (d) => {
 })
 
 const st = await page.evaluate(() => JSON.parse(localStorage.getItem('minhas-financas:v1')))
-const compra = st.dolares[0]
+const compra = st.dolares.find((d) => d.data === '2026-11-03')
+ok(st.dolares.some((d) => d.id === 'wise-6365993574' && d.pagouBRL === 457), 'compra do Wise de 28/10 já vem anotada')
 ok(compra && compra.pagouBRL === 457 && compra.recebeuUSD === 81.87 && compra.cambio === 5.3544 && compra.taxas === 18.62, 'compra salva com campos do Wise')
 ok(st.movimentos.some((m) => m.linkId === compra.id && m.valor === 457), 'compra também aparece no Meu Mês')
 await shot('03-inicio-com-dados')

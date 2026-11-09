@@ -325,7 +325,13 @@ function CompraCard({ a, onClick }: { a: CompraAnalise; onClick: () => void }) {
         </span>
         <span className={`num font-bold ${a.resultado >= 0 ? 'text-good' : 'text-bad'}`}>{fmtBRLs(a.resultado)}</span>
       </div>
-      {c.taxas ? <p className="mt-1 px-1 text-xs text-muted">Taxas e impostos do comprovante: {fmtBRL(c.taxas)}</p> : null}
+      {c.taxas ? <p className="mt-1 px-1 text-xs text-muted">Taxas do comprovante: {fmtBRL(c.taxas)}</p> : null}
+      {a.fonteDia === 'comprovante' && a.ptaxDia && a.dolarDia && (
+        <p className="mt-0.5 px-1 text-xs text-muted">
+          Dólar oficial nesse dia (PTAX): <span className="num">{fmtCot(a.ptaxDia)}</span>
+          {a.dolarDia <= a.ptaxDia ? ' — o câmbio do app foi melhor 👍' : ` — o app cobrou ${fmtPct(a.dolarDia / a.ptaxDia - 1)} a mais no câmbio`}
+        </p>
+      )}
     </button>
   )
 }

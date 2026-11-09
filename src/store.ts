@@ -23,7 +23,8 @@ const ESTADO_INICIAL: AppState = {
   config: CONFIG_PADRAO,
   movimentos: [],
   cdi: [{ id: 'inicio', data: '2026-10-26', tipo: 'Guardei', valor: 796, nota: 'Meu primeiro depósito! 🎉' }],
-  dolares: [],
+  // Comprovante Wise #6365993574 (28/10/2026). Fora do Meu Mês: não sabemos de qual mês saiu o dinheiro.
+  dolares: [{ id: 'wise-6365993574', data: '2026-10-28', onde: 'Wise', pagouBRL: 457, recebeuUSD: 81.87, cambio: 5.3544, taxas: 18.62 }],
 }
 
 export function validar(x: unknown): AppState | null {

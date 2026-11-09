@@ -105,6 +105,8 @@ export interface CompraAnalise {
   /** Dólar "de mercado" do dia da compra: câmbio do comprovante, senão PTAX do dia. */
   dolarDia: number | null
   fonteDia: 'comprovante' | 'ptax' | null
+  /** Dólar oficial (PTAX) do dia da compra, para comparar com o câmbio do app. */
+  ptaxDia: number | null
   /** R$ pagos acima do dólar de mercado do dia (tarifa + IOF + spread). */
   custoTaxas: number | null
   custoTaxasPct: number | null
@@ -129,6 +131,7 @@ export function analisarCompra(c: CompraDolar, m: Mercado, cotHoje: number, conf
     vet,
     dolarDia,
     fonteDia,
+    ptaxDia: ptax,
     custoTaxas: dolarDia ? c.pagouBRL - c.recebeuUSD * dolarDia : null,
     custoTaxasPct: dolarDia ? vet / dolarDia - 1 : null,
     variacao: dolarDia ? c.recebeuUSD * (cotHoje - dolarDia) : null,

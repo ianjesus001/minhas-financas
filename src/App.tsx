@@ -111,7 +111,7 @@ function BoasVindas({ open, onClose }: { open: boolean; onClose: () => void }) {
           🏠 <b>No Início</b> você vê quanto tem guardado e quanto sobrou no mês.
         </li>
         <li>
-          🌱 <b>Seu primeiro depósito</b> de R$ 796 (26/10) já está anotado no CDI.
+          🌱 <b>Já anotei</b> seu depósito de R$ 796 no CDI (26/10) e sua compra de US$ 81,87 no Wise (28/10).
         </li>
         <li>
           🔒 <b>Seus dados ficam só no seu celular.</b> Nos Ajustes dá para fazer backup e exportar para o Excel.

@@ -93,10 +93,10 @@ function Form({ onClose, editar }: { onClose: () => void; editar: { id: string; 
 
       {tipo === 'dolar' ? (
         <>
-          <Field label="Saiu da conta (BRL)" hint="No Wise é o valor de cima, em reais (já com taxas e IOF).">
+          <Field label="Saiu da conta (BRL)" hint={<>No comprovante do Wise: <b>Converted from</b> (já com taxas e IOF).</>}>
             <MoneyInput value={brl} onChange={setBrl} big autoFocus={!editar} />
           </Field>
-          <Field label="Recebi (USD)" hint="No Wise é o valor de baixo, em dólares.">
+          <Field label="Recebi (USD)" hint={<>No comprovante do Wise: <b>Converted to</b>.</>}>
             <MoneyInput value={usd} onChange={setUsd} prefix="US$" big />
           </Field>
           {brl > 0 && usd > 0 && (
@@ -111,13 +111,13 @@ function Form({ onClose, editar }: { onClose: () => void; editar: { id: string; 
               <span className="text-muted">⌄</span>
             </summary>
             <div className="px-4 pb-1">
-              <Field label="Câmbio: 1 USD = ? BRL" hint="No Wise aparece no topo, ex: 1 USD = 5.3544 BRL.">
+              <Field label="Câmbio: 1 USD = ? BRL" hint={<><b>Exchange rate</b>, ex: 1 USD = 5,3544 BRL.</>}>
                 <MoneyInput value={cambio} onChange={setCambio} prefix="R$" decimals={4} />
               </Field>
-              <Field label="Taxas e impostos (Total fees and taxes)">
+              <Field label="Taxas" hint={<><b>Fee</b> (ou <b>Total fees and taxes</b>), em BRL.</>}>
                 <MoneyInput value={taxas} onChange={setTaxas} />
               </Field>
-              <Field label="VET (Effective rate)" hint="Se não preencher, o app calcula sozinho.">
+              <Field label="VET (Effective rate)" hint="Se não aparecer no comprovante, deixe vazio: o app calcula sozinho.">
                 <MoneyInput value={vet} onChange={setVet} prefix="R$" decimals={4} />
               </Field>
               {cambio > 0 && usd > 0 && brl > 0 && Math.abs(usd * cambio + (taxas || brl - usd * cambio) - brl) > 0.05 && (
@@ -159,7 +159,7 @@ function Form({ onClose, editar }: { onClose: () => void; editar: { id: string; 
         </>
       )}
 
-      <Field label="Data">
+      <Field label="Data" hint={tipo === 'dolar' ? <>No comprovante do Wise: <b>Completed</b>.</> : undefined}>
         <input type="date" className={inputCls} value={data} max="2100-12-31" onChange={(e) => e.target.value && setData(e.target.value)} />
       </Field>
 
