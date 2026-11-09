@@ -1,0 +1,87 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --color-bg: #f6f7fb;
+  --color-ink: #1f2433;
+  --color-muted: #7a7f8c;
+  --color-line: #e8eaf0;
+  --color-teal: #2a9d8f;
+  --color-teal-soft: #e3f4f1;
+  --color-blue: #457b9d;
+  --color-blue-soft: #e4eef5;
+  --color-coral: #e76f51;
+  --color-coral-soft: #fbe9e4;
+  --color-purple: #7b5ea7;
+  --color-purple-soft: #efeaf6;
+  --color-gold: #e9a23b;
+  --color-gold-soft: #fcf1de;
+  --color-good: #1b8a5a;
+  --color-bad: #c0392b;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.card {
+  background: white;
+  border-radius: 1.5rem;
+  box-shadow: 0 1px 2px rgb(16 24 40 / 0.04), 0 4px 16px rgb(16 24 40 / 0.05);
+}
+
+.press {
+  transition: transform 0.12s ease;
+}
+.press:active {
+  transform: scale(0.97);
+}
+
+.safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom), 0.75rem);
+}
+.safe-top {
+  padding-top: max(env(safe-area-inset-top), 0.75rem);
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.sheet-in {
+  animation: sheet-in 0.28s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.fade-in {
+  animation: fade-in 0.2s ease;
+}
+
+input[type='range'] {
+  accent-color: var(--color-purple);
+}
