@@ -154,8 +154,29 @@ function onEdit(e) {
   ordenar(s, cfg.colunas);
 }
 
+/**
+ * Ordena por data. As listas/validações (data, categoria, valor) recusam mover uma linha vazia,
+ * então saem durante o sort e voltam depois (todas as linhas têm a mesma regra por coluna).
+ */
 function ordenar(s, colunas) {
-  s.getRange(PRIMEIRA, 2, LINHAS, colunas).sort({ column: 2, ascending: true });
+  const rng = s.getRange(PRIMEIRA, 2, LINHAS, colunas);
+  const regras = [];
+  for (let c = 1; c <= colunas; c++) regras.push(rng.getCell(1, c).getDataValidation());
+  rng.clearDataValidations();
+  try {
+    rng.sort({ column: 2, ascending: true });
+  } finally {
+    regras.forEach(function (regra, i) {
+      if (regra) s.getRange(PRIMEIRA, 2 + i, LINHAS, 1).setDataValidation(regra);
+    });
+  }
+}
+
+/** Ordena as duas tabelas agora (rodar no editor se precisar). */
+function ordenarTudo() {
+  ordenar(aba(ABA_REAIS), 4);
+  ordenar(aba(ABA_DOLARES), 6);
+  Logger.log('Tabelas ordenadas.');
 }
 
 // ---------------------------------------------------------------- ajuste de nov/2026
