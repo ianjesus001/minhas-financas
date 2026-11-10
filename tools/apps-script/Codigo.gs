@@ -300,7 +300,10 @@ const FMT_BRL = '"R$" #,##0.00;[Red]-"R$" #,##0.00';
 function atualizarVersaoCompleta() {
   backup();
   const sep = separador();
-  const f = function (formula) { return sep === ',' ? formula : formula.replace(/,/g, ';'); };
+  // em português/espanhol: argumentos com ";" e decimais com "," (0.225 → 0,225)
+  const f = function (formula) {
+    return sep === ',' ? formula : formula.replace(/,/g, ';').replace(/(\d)\.(\d)/g, '$1,$2');
+  };
   adicionarCategoriaResgate(f);
   criarAbaCDI(f);
   criarAbaSimulador(f);
