@@ -10,12 +10,12 @@ import { Button, Sheet, inputCls } from './ui'
 
 type Tab = 'inicio' | 'mes' | 'cdi' | 'dolar' | 'simular' | 'ajustes'
 
+// 2 abas | + | 2 abas: o + fica no centro exato. O Simulador abre pela aba CDI e pelo Início.
 const TABS: { id: Tab; emoji: string; label: string }[] = [
   { id: 'inicio', emoji: '🏠', label: 'Início' },
   { id: 'mes', emoji: '📒', label: 'Mês' },
   { id: 'cdi', emoji: '🌱', label: 'CDI' },
   { id: 'dolar', emoji: '💵', label: 'Dólar' },
-  { id: 'simular', emoji: '🔮', label: 'Simular' },
 ]
 
 export default function App() {
@@ -55,27 +55,29 @@ export default function App() {
     <div className="mx-auto min-h-dvh max-w-lg px-4 pb-32">
       {tab === 'inicio' && <Inicio onEdit={onEdit} onSettings={() => setTab('ajustes')} onGo={setTab} />}
       {tab === 'mes' && <Mes onEdit={onEdit} />}
-      {tab === 'cdi' && <CDI onEdit={onEdit} />}
+      {tab === 'cdi' && <CDI onEdit={onEdit} onSimular={() => setTab('simular')} />}
       {tab === 'dolar' && <Dolar onEdit={onEdit} />}
-      {tab === 'simular' && <Simular />}
+      {tab === 'simular' && <Simular onBack={() => setTab('cdi')} />}
       {tab === 'ajustes' && <Ajustes onBack={() => setTab('inicio')} />}
 
       <nav className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/90 backdrop-blur-lg">
-        <div className="relative mx-auto flex max-w-lg items-end justify-around px-2 pt-2">
+        {/* 5 colunas iguais: 2 abas, o +, 2 abas */}
+        <div className="mx-auto grid max-w-lg grid-cols-5 items-end px-2 pt-2">
           {TABS.slice(0, 2).map((t) => (
             <TabButton key={t.id} t={t} active={tab === t.id} onClick={() => setTab(t.id)} />
           ))}
-          <div className="w-16" />
+          <div className="flex justify-center">
+            <button
+              onClick={() => setAdd(true)}
+              aria-label="Anotar"
+              className="press -mt-9 mb-1 grid h-16 w-16 place-items-center rounded-[1.4rem] bg-gradient-to-br from-teal to-purple text-4xl font-light text-white shadow-xl shadow-purple/30"
+            >
+              +
+            </button>
+          </div>
           {TABS.slice(2).map((t) => (
-            <TabButton key={t.id} t={t} active={tab === t.id} onClick={() => setTab(t.id)} />
+            <TabButton key={t.id} t={t} active={tab === t.id || (t.id === 'cdi' && tab === 'simular')} onClick={() => setTab(t.id)} />
           ))}
-          <button
-            onClick={() => setAdd(true)}
-            aria-label="Anotar"
-            className="press absolute -top-7 left-1/2 grid h-16 w-16 -translate-x-1/2 place-items-center rounded-[1.4rem] bg-gradient-to-br from-teal to-purple text-4xl font-light text-white shadow-xl shadow-purple/30"
-          >
-            +
-          </button>
         </div>
       </nav>
 
@@ -87,7 +89,7 @@ export default function App() {
 
 function TabButton({ t, active, onClick }: { t: (typeof TABS)[number]; active: boolean; onClick: () => void }) {
   return (
-    <button onClick={onClick} className={`press flex w-14 flex-col items-center gap-0.5 pb-1 text-[11px] font-semibold ${active ? 'text-ink' : 'text-muted'}`}>
+    <button onClick={onClick} className={`press flex flex-col items-center gap-0.5 pb-1 text-[11px] font-semibold ${active ? 'text-ink' : 'text-muted'}`}>
       <span className={`text-xl transition ${active ? 'scale-110' : 'opacity-60 grayscale'}`}>{t.emoji}</span>
       {t.label}
     </button>

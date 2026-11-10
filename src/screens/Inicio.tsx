@@ -113,7 +113,16 @@ export function Inicio({ onEdit, onSettings, onGo }: { onEdit: (id: string) => v
         <Empty emoji="✍️" title="Nada anotado ainda" text="Toque no botão + para anotar seu salário ou seu primeiro gasto." />
       )}
 
-      <div className="mt-7">
+      <button onClick={() => onGo('simular')} className="press card mt-7 flex w-full items-center gap-4 p-4 text-left">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-purple-soft text-2xl">🔮</span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-bold">Simular: quanto vou ter?</span>
+          <span className="block text-xs text-muted">Veja quanto seu dinheiro pode virar guardando todo mês</span>
+        </span>
+        <span className="text-xl text-muted">›</span>
+      </button>
+
+      <div className="mt-4">
         <Info tone="purple">
           <b>💡 Dica:</b> {dica}
         </Info>

@@ -19,7 +19,7 @@ export function StatusMercado({ m }: { m: Mercado }) {
 // CDI
 // =====================================================================
 
-export function CDI({ onEdit }: { onEdit: (id: string) => void }) {
+export function CDI({ onEdit, onSimular }: { onEdit: (id: string) => void; onSimular: () => void }) {
   const s = useAppState()
   const m = useMercado()
   const r = resumoCDI(s, m)
@@ -62,6 +62,15 @@ export function CDI({ onEdit }: { onEdit: (id: string) => void }) {
         <Stat label="Se resgatar tudo hoje" value={fmtBRL(r.liquido)} hint="já sem imposto (aprox.)" />
         <Stat label="Imposto (IR) aprox." value={fmtBRL(r.ir)} tone="muted" />
       </div>
+
+      <button onClick={onSimular} className="press card mt-4 flex w-full items-center gap-4 p-4 text-left">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-purple-soft text-2xl">🔮</span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-bold">Simular: quanto vou ter?</span>
+          <span className="block text-xs text-muted">Se eu guardar um pouco todo mês, quanto terei daqui a 1, 2, 5 anos</span>
+        </span>
+        <span className="text-xl text-muted">›</span>
+      </button>
 
       <SectionTitle>Guardei e resgatei</SectionTitle>
       {lista.length ? (

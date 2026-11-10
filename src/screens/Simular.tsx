@@ -4,7 +4,7 @@ import { useMercado } from '../mercado'
 import { updateConfig, useAppState } from '../store'
 import { Header, Info, MoneyInput, SectionTitle } from '../ui'
 
-export function Simular() {
+export function Simular({ onBack }: { onBack: () => void }) {
   const s = useAppState()
   const { simInicial, simMensal, simMeses } = s.config
   const t = taxas(s.config, useMercado())
@@ -21,7 +21,15 @@ export function Simular() {
 
   return (
     <div>
-      <Header title="Simulador" subtitle="Quanto vou ter se guardar todo mês? 🔮" />
+      <Header
+        title="Simulador"
+        subtitle="Quanto vou ter se guardar todo mês? 🔮"
+        right={
+          <button onClick={onBack} className="press rounded-2xl bg-white px-4 py-2.5 text-sm font-bold shadow-sm">
+            ‹ Voltar
+          </button>
+        }
+      />
 
       <div className="card space-y-5 p-5">
         <div>
