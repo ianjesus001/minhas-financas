@@ -279,34 +279,75 @@ function ajustarCores() {
   Logger.log('Cores ajustadas.');
 }
 
-// ---------------------------------------------------------------- caixinha (nov/2026)
+// ---------------------------------------------------------------- versão completa (nov/2026)
 
 const CAT_GUARDEI = '🌱 Guardei (caixinha / CDI)';
 const CAT_RESGATE = '↩️ Resgatei da caixinha';
+const ABA_CDI = '🌱 Meu CDI';
+const ABA_SIM = '🔮 Simulador';
+const COR = { TEAL: '#2A9D8F', NAVY: '#264653', PURPLE: '#7B5EA7', GOLD: '#E9A23B', BLUE: '#457B9D',
+  SOFT_TEAL: '#E3F4F1', SOFT_GOLD: '#FCF1DE', SOFT_PURPLE: '#EFEAF6', INPUT: '#FFF4C2', GRAY: '#7A7F8C',
+  LINE: '#D9DCE3', INK: '#2D3142' };
+const FMT_BRL = '"R$" #,##0.00;[Red]-"R$" #,##0.00';
 
 /**
- * Rodar uma vez no editor. Cria a categoria "Resgatei da caixinha" (tipo Resgate: diminui o
- * guardado e não conta como entrada), passa os resgates já anotados para ela e adiciona o
- * bloco "Minha caixinha" no Resumo.
+ * Rodar uma vez no editor. Deixa a planilha com tudo da versão Excel:
+ *  - categoria "Resgatei da caixinha" (tipo Resgate: diminui o guardado, não conta como entrada);
+ *  - aba 🌱 Meu CDI, que lê os depósitos e resgates do 📒 Meus Reais (nada é anotado duas vezes);
+ *  - aba 🔮 Simulador;
+ *  - bloco da caixinha no 🏠 Resumo e as abas novas no 👋 Comece aqui.
  */
-function adicionarCaixinha() {
+function atualizarVersaoCompleta() {
   backup();
   const sep = separador();
   const f = function (formula) { return sep === ',' ? formula : formula.replace(/,/g, ';'); };
+  adicionarCategoriaResgate(f);
+  criarAbaCDI(f);
+  criarAbaSimulador(f);
+  blocoResumo(f);
+  guiaAbasNovas();
+  Logger.log('Versão completa pronta.');
+}
+
+function estilo(r, o) {
+  r.setFontFamily('Arial').setFontSize(o.size || 10).setFontColor(o.color || COR.INK).setVerticalAlignment('middle');
+  if (o.bold) r.setFontWeight('bold');
+  if (o.italic) r.setFontStyle('italic');
+  if (o.bg) r.setBackground(o.bg);
+  if (o.fmt) r.setNumberFormat(o.fmt);
+  if (o.h) r.setHorizontalAlignment(o.h);
+  if (o.wrap) r.setWrap(true);
+  if (o.border) r.setBorder(true, true, true, true, true, true, COR.LINE, SpreadsheetApp.BorderStyle.SOLID);
+  return r;
+}
+
+function secao(s, a1, texto, cor) {
+  const r = s.getRange(a1).merge().setValue(texto);
+  estilo(r, { bold: true, color: '#FFFFFF', bg: cor, size: 11 });
+  s.setRowHeight(r.getRow(), 24);
+  return r;
+}
+
+function abaNova(nome, depoisDe, cor) {
+  const ss = SpreadsheetApp.getActive();
+  const velha = ss.getSheetByName(nome);
+  if (velha) ss.deleteSheet(velha);
+  const s = ss.insertSheet(nome, aba(depoisDe).getIndex());
+  s.setTabColor(cor);
+  s.setHiddenGridlines(true);
+  estilo(s.getRange('A1:Z300'), {});
+  return s;
+}
+
+function adicionarCategoriaResgate(f) {
   const L = aba('Listas');
   const MR = aba(ABA_REAIS);
-  const R = aba('🏠 Resumo');
-  const MRq = "'" + ABA_REAIS + "'";
-
-  // 1. categoria nova na lista (a lista passa a ir até a linha 30)
   let nomes = L.getRange('A2:A30').getValues().map(function (r) { return r[0]; });
   if (nomes.indexOf(CAT_RESGATE) < 0) {
     L.getRange(2 + nomes.indexOf(''), 1, 1, 2).setValues([[CAT_RESGATE, 'Resgate']]);
     nomes = L.getRange('A2:A30').getValues().map(function (r) { return r[0]; });
   }
   const k = nomes.indexOf(CAT_RESGATE);
-
-  // 2. lista de categorias e coluna Tipo enxergam a lista maior
   MR.getRange(PRIMEIRA, 4, LINHAS, 1).setDataValidation(SpreadsheetApp.newDataValidation()
     .requireValueInRange(L.getRange('A2:A30'), true).setAllowInvalid(false)
     .setHelpText('Escolha uma categoria da lista ▾').build());
@@ -315,13 +356,11 @@ function adicionarCaixinha() {
     tipos.push([f('=IF(D' + r + '="","",IFERROR(INDEX(Listas!$B$2:$B$30,MATCH(D' + r + ',Listas!$A$2:$A$30,0)),"?"))')]);
   }
   MR.getRange(PRIMEIRA, 6, LINHAS, 1).setFormulas(tipos);
-
-  // 3. resumo do mês: guardado = investido − resgatado
+  // guardado do mês = investido − resgatado
   const mes = ',$B:$B,">="&Listas!$E$1,$B:$B,"<="&Listas!$E$2)';
   MR.getRange('J10').setFormula(f('=SUMIFS($E:$E,$F:$F,"Investimento"' + mes + '-SUMIFS($E:$E,$F:$F,"Resgate"' + mes));
   MR.getRange('K10').setValue('dólar + caixinha − resgates');
-
-  // 4. linha da categoria nova na tabela por categoria
+  // linha da categoria nova na tabela por categoria
   const linha = 15 + k;
   MR.getRange('I31:L31').copyFormatToRange(MR, 9, 12, linha, linha);
   MR.getRange(linha, 9, 1, 4).setFormulas([[
@@ -329,60 +368,239 @@ function adicionarCaixinha() {
     f('=SUMIFS($E:$E,$D:$D,I' + linha + mes),
     f('=IF(AND(J' + linha + '="Gasto",$J$8>0),K' + linha + '/$J$8,"")'),
   ]]);
-
-  // 5. Resumo "Este mês": guardado líquido
-  const cur = function (tipo) {
-    return 'SUMIFS(' + MRq + '!$E:$E,' + MRq + '!$F:$F,"' + tipo + '",' + MRq + '!$B:$B,">="&Listas!$E$3,' + MRq + '!$B:$B,"<="&Listas!$E$4)';
-  };
-  R.getRange('G13').setFormula(f('=' + cur('Investimento') + '-' + cur('Resgate')));
-
-  // 6. bloco "Minha caixinha"
-  const TEAL = '#2A9D8F', SOFT = '#E3F4F1', AMARELO = '#FFF4C2', CINZA = '#7A7F8C';
-  const BRL = '"R$" #,##0.00;[Red]-"R$" #,##0.00';
-  const e = MRq + '!$E$6:$E$405', d = MRq + '!$D$6:$D$405', b = MRq + '!$B$6:$B$405';
-  R.getRange('B16:G16').merge().setValue('🌱 Minha caixinha (CDI)').setBackground(TEAL)
-    .setFontColor('#FFFFFF').setFontWeight('bold').setFontSize(11).setFontFamily('Arial');
-  R.setRowHeight(16, 26);
-  const bloco = R.getRange('B17:G19');
-  bloco.setBackground(SOFT).setFontFamily('Arial').setFontSize(10).setVerticalAlignment('middle')
-    .setBorder(true, true, true, true, true, true, '#D9DCE3', SpreadsheetApp.BorderStyle.SOLID);
-  R.getRange('B17:B19').setFontWeight('bold');
-  R.getRange('D17:D19').setFontWeight('bold');
-  R.getRange('F17').setFontWeight('bold');
-  R.getRange('B17:G19').setValues([
-    ['💪 Coloquei do meu bolso', '', '✍️ CDI ao ano (atualize de vez em quando)', 0.1365, '✍️ % do CDI que o banco paga', 1],
-    ['🌱 Deve ter hoje (estimativa)', '', '🎉 Rendeu (estimativa)', '', '', ''],
-    ['✍️ Saldo no app do banco (opcional)', '', '🎉 Rendeu de verdade', '', '', ''],
-  ]);
-  R.getRange('B17:G19').setWrap(true);
-  R.setRowHeights(17, 3, 34);
-  R.getRange('C17').setFormula(f('=SUMIFS(' + e + ',' + d + ',"' + CAT_GUARDEI + '")-SUMIFS(' + e + ',' + d + ',"' + CAT_RESGATE + '")'));
-  R.getRange('C18').setFormula(f('=SUMPRODUCT(((' + d + '="' + CAT_GUARDEI + '")-(' + d + '="' + CAT_RESGATE + '"))*' + e +
-    '*(1+E17*G17)^((TODAY()-' + b + ')/365))'));
-  R.getRange('E18').setFormula('=C18-C17');
-  R.getRange('E19').setFormula(f('=IF(C19="","",C19-C17)'));
-  R.getRange('C17:C19').setNumberFormat(BRL).setFontWeight('bold').setHorizontalAlignment('right');
-  R.getRange('E18:E19').setNumberFormat(BRL).setFontWeight('bold').setHorizontalAlignment('right');
-  R.getRange('E17').setNumberFormat('0.00%').setBackground(AMARELO).setHorizontalAlignment('right');
-  R.getRange('G17').setNumberFormat('0%').setBackground(AMARELO).setHorizontalAlignment('right');
-  R.getRange('C19').setBackground(AMARELO);
-  R.getRange('C18').setFontColor(TEAL).setFontSize(12);
-  R.getRange('B20:G20').merge().setValue('O app calcula o valor exato com o CDI oficial de cada dia. Aqui é uma estimativa com a taxa acima; ' +
-    'para o valor real, escreva o saldo do app do banco.').setFontColor(CINZA).setFontStyle('italic').setFontSize(9)
-    .setFontFamily('Arial').setWrap(true);
-  R.setRowHeight(20, 30);
-
-  // 7. resgates já anotados vão para a categoria nova
+  // resgates já anotados como "Outras entradas" passam para a categoria nova
   const v = MR.getRange(PRIMEIRA, 2, LINHAS, 4).getValues();
-  const log = [];
   v.forEach(function (l, i) {
     const desc = String(l[1]);
     if (l[2] === '↩️ Outras entradas' && /resgat|regast|retirad/i.test(desc) && /cdi|caixinha|inter/i.test(desc)) {
       MR.getRange(PRIMEIRA + i, 4).setValue(CAT_RESGATE);
-      log.push(desc + ' ' + l[3]);
     }
   });
-  Logger.log('Caixinha pronta. Resgates recategorizados: ' + log.join(', '));
+}
+
+function criarAbaCDI(f) {
+  const s = abaNova(ABA_CDI, ABA_DOLARES, COR.TEAL);
+  [2, 12, 12, 15, 30, 13, 16, 15, 3, 46, 17].forEach(function (w, i) { s.setColumnWidth(i + 1, w * 7); });
+  s.getRange('B1:K1').merge().setValue('🌱 Meu CDI — meu dinheiro rendendo');
+  estilo(s.getRange('B1'), { size: 20, bold: true, color: COR.TEAL });
+  s.setRowHeight(1, 40);
+  s.getRange('B2:K2').merge().setValue('Os depósitos e resgates vêm sozinhos do 📒 Meus Reais (categorias 🌱 Guardei e ↩️ Resgatei da caixinha). Aqui você só confere quanto rendeu.');
+  estilo(s.getRange('B2'), { italic: true, color: COR.GRAY, wrap: true });
+  s.setRowHeight(2, 30);
+
+  secao(s, 'B4:H4', '🤖 Meus depósitos e resgates (vêm do Meus Reais)', COR.TEAL);
+  s.getRange('B5:H5').setValues([['Data', 'O que fiz', 'Valor (R$)', 'Descrição', 'Dias úteis rendendo', 'Vale hoje (estimativa)', 'Já rendeu']]);
+  estilo(s.getRange('B5:H5'), { bold: true, color: '#FFFFFF', bg: COR.TEAL, h: 'center', wrap: true, border: true });
+  s.setRowHeight(5, 34);
+  const MR = "'" + ABA_REAIS + "'!";
+  const cond = '((' + MR + '$D$6:$D$405="' + CAT_GUARDEI + '")+(' + MR + '$D$6:$D$405="' + CAT_RESGATE + '"))>0';
+  s.getRange('B6').setFormula(f('=IFERROR(FILTER(' + MR + '$B$6:$B$405,' + cond + '),"")'));
+  s.getRange('C6').setFormula(f('=IFERROR(ARRAYFORMULA(IF(FILTER(' + MR + '$D$6:$D$405,' + cond + ')="' + CAT_GUARDEI + '","Guardei","Resgatei")),"")'));
+  s.getRange('D6').setFormula(f('=IFERROR(FILTER(' + MR + '$E$6:$E$405,' + cond + '),"")'));
+  s.getRange('E6').setFormula(f('=IFERROR(FILTER(' + MR + '$C$6:$C$405,' + cond + '),"")'));
+  const N = 200, linhas = [];
+  for (let r = 6; r < 6 + N; r++) {
+    const sinal = 'IF(C' + r + '="Resgatei",-1,1)';
+    linhas.push([
+      f('=IF(B' + r + '="","",MAX(0,NETWORKDAYS(B' + r + ',TODAY())-1))'),
+      f('=IF(F' + r + '="","",' + sinal + '*D' + r + '*(1+$K$10)^F' + r + ')'),
+      f('=IF(F' + r + '="","",G' + r + '-' + sinal + '*D' + r + ')'),
+    ]);
+  }
+  s.getRange(6, 6, N, 3).setFormulas(linhas);
+  const ir = [];
+  for (let r = 6; r < 6 + N; r++) {
+    const d = '(TODAY()-B' + r + ')';
+    ir.push([f('=IF(H' + r + '="","",H' + r + '*IF(' + d + '<=180,0.225,IF(' + d + '<=360,0.2,IF(' + d + '<=720,0.175,0.15))))')]);
+  }
+  s.getRange(6, 13, N, 1).setFormulas(ir);
+  s.hideColumns(13);
+  estilo(s.getRange(6, 2, N, 7), { border: true });
+  s.getRange(6, 2, N, 1).setNumberFormat('dd/mm/yyyy').setHorizontalAlignment('center');
+  s.getRange(6, 3, N, 1).setHorizontalAlignment('center');
+  s.getRange(6, 4, N, 1).setNumberFormat(FMT_BRL);
+  s.getRange(6, 6, N, 1).setHorizontalAlignment('center').setFontColor(COR.GRAY);
+  s.getRange(6, 7, N, 2).setNumberFormat(FMT_BRL);
+  s.setFrozenRows(5);
+
+  secao(s, 'J4:K4', '⚙️ Quanto meu dinheiro rende', COR.NAVY);
+  s.getRange('J5:K10').setValues([
+    ['✍️ CDI ao ano (atualize de vez em quando)', 0.1365],
+    ['✍️ Quanto do CDI o banco paga (Nubank = 100%)', 1],
+    ['➡️ Então meu dinheiro rende por ano', '=K5*K6'],
+    ['➡️ Isso dá mais ou menos por mês', '=(1+K7)^(1/12)-1'],
+    ['➡️ A cada R$ 1.000 guardados, ganho por mês', '=1000*K8'],
+    ['rendimento por dia útil (usado nas contas)', '=(1+K7)^(1/252)-1'],
+  ]);
+  estilo(s.getRange('J5:K10'), {});
+  estilo(s.getRange('J5:J9'), { bold: true });
+  s.getRange('K5').setNumberFormat('0.00%').setBackground(COR.INPUT);
+  s.getRange('K6').setNumberFormat('0%').setBackground(COR.INPUT);
+  s.getRange('K7:K8').setNumberFormat('0.00%').setFontColor(COR.TEAL).setFontWeight('bold');
+  s.getRange('K9').setNumberFormat(FMT_BRL).setFontColor(COR.TEAL).setFontWeight('bold');
+  s.getRange('K10').setNumberFormat('0.0000%');
+  estilo(s.getRange('J10:K10'), { size: 8, color: COR.GRAY, italic: true });
+  s.getRange('K10').setNumberFormat('0.0000%');
+  s.getRange('K5').setNote('O CDI anda quase igual à taxa Selic. Para atualizar, pesquise "CDI hoje" no Google. O app mostra o valor exato com o CDI oficial de cada dia.');
+
+  secao(s, 'J12:K12', '📊 Meu CDI hoje', COR.TEAL);
+  s.getRange('J13:J19').setValues([
+    ['💪 Quanto coloquei do meu bolso (guardei − resgatei)'], ['Quanto deve ter hoje (estimativa)'],
+    ['✍️ Saldo que aparece no app do banco (opcional, é o valor real)'], ['✅ Tenho no CDI'],
+    ['🎉 Quanto o CDI já me deu (rendimento)'], ['🧾 Imposto (IR) se eu resgatar tudo hoje (aprox.)'],
+    ['💵 O que cairia na minha conta se resgatar tudo']]);
+  s.getRange('K13').setFormula(f('=SUMIFS(D6:D205,C6:C205,"Guardei")-SUMIFS(D6:D205,C6:C205,"Resgatei")'));
+  s.getRange('K14').setFormula('=SUM(G6:G205)');
+  s.getRange('K16').setFormula(f('=IF(K15="",K14,K15)'));
+  s.getRange('K17').setFormula('=K16-K13');
+  s.getRange('K18').setFormula(f('=MAX(0,SUM(M6:M205))'));
+  s.getRange('K19').setFormula('=K16-K18');
+  estilo(s.getRange('J13:K19'), { fmt: FMT_BRL, wrap: true });
+  s.getRange('J13:K19').setBorder(null, null, true, null, null, true, COR.LINE, SpreadsheetApp.BorderStyle.SOLID);
+  ['J15', 'J16', 'J17', 'J19', 'K16', 'K17', 'K19'].forEach(function (a) { s.getRange(a).setFontWeight('bold'); });
+  s.getRange('K15').setBackground(COR.INPUT);
+  s.getRange('K16').setFontColor(COR.TEAL).setFontSize(12);
+  s.getRange('K15').setNote('Se preencher, a planilha usa este valor (o real do app). Se deixar vazio, usa a estimativa.');
+  s.setRowHeights(13, 7, 24);
+
+  secao(s, 'J21:K21', '🧾 Como funciona o imposto no CDI', COR.GOLD);
+  s.getRange('J22:K25').setValues([['Dinheiro guardado há até 6 meses (180 dias)', 0.225], ['De 6 meses a 1 ano (181 a 360 dias)', 0.2],
+    ['De 1 a 2 anos (361 a 720 dias)', 0.175], ['Mais de 2 anos (acima de 720 dias)', 0.15]]);
+  estilo(s.getRange('J22:K25'), { border: true });
+  s.getRange('K22:K25').setNumberFormat('0.0%').setHorizontalAlignment('center').setFontWeight('bold');
+  s.getRange('J26:K29').merge().setValue('👉 O imposto é cobrado SÓ sobre o que rendeu, nunca sobre o que você colocou. O banco já desconta sozinho na hora do resgate. ' +
+    'Quanto mais tempo o dinheiro fica, menos imposto. Se tirar antes de 30 dias, também tem IOF (só sobre o rendimento).');
+  estilo(s.getRange('J26'), { size: 9, bg: COR.SOFT_GOLD, wrap: true });
+  s.getRange('J26').setVerticalAlignment('top');
+}
+
+function criarAbaSimulador(f) {
+  const s = abaNova(ABA_SIM, ABA_CDI, COR.PURPLE);
+  [2, 44, 18, 4, 10, 16, 16, 18, 18].forEach(function (w, i) { s.setColumnWidth(i + 1, w * 7); });
+  s.getRange('B1:I1').merge().setValue('🔮 Simulador — quanto vou ter se eu guardar todo mês?');
+  estilo(s.getRange('B1'), { size: 20, bold: true, color: COR.PURPLE });
+  s.setRowHeight(1, 40);
+  s.getRange('B2:I2').merge().setValue('Brinque com os números amarelinhos e veja o poder dos juros compostos (o rendimento rendendo em cima do rendimento).');
+  estilo(s.getRange('B2'), { italic: true, color: COR.GRAY, wrap: true });
+
+  secao(s, 'B4:C4', '✍️ Me conta seu plano', COR.PURPLE);
+  s.getRange('B5:C10').setValues([
+    ['Quanto já tenho guardado hoje', "='" + ABA_CDI + "'!K16"],
+    ['Quanto vou guardar todo mês', 300],
+    ['Por quantos meses (até 120 = 10 anos)', 24],
+    ['Rendimento por ano (vem da aba 🌱 Meu CDI)', "='" + ABA_CDI + "'!K7"],
+    ['Rendimento por mês', '=(1+C8)^(1/12)-1'],
+    ['Poupança por mês (0,5% + TR, aprox.)', 0.0055],
+  ]);
+  estilo(s.getRange('B5:C10'), { border: true });
+  estilo(s.getRange('B5:B7'), { bold: true });
+  estilo(s.getRange('C5:C7'), { bold: true, bg: COR.INPUT, h: 'right' });
+  s.getRange('C5:C6').setNumberFormat(FMT_BRL);
+  s.getRange('C7').setNumberFormat('0 "meses"');
+  s.getRange('C7').setDataValidation(SpreadsheetApp.newDataValidation().requireNumberBetween(1, 120).setAllowInvalid(false)
+    .setHelpText('Escolha entre 1 e 120 meses').build());
+  s.getRange('C8:C10').setNumberFormat('0.00%').setFontColor(COR.GRAY);
+  s.getRange('B8:B10').setFontColor(COR.GRAY);
+  s.getRange('C5').setNote('Já vem com o que você tem no CDI. Pode trocar por outro valor.');
+
+  const MESES = 'MIN($C$7,120)';
+  secao(s, 'B12:C12', '🎯 Resultado', COR.PURPLE);
+  s.getRange('B13:B17').setValues([[''], ['💪 Saiu do seu bolso'], ['🎁 O CDI te deu de presente'], ['🧾 Imposto de renda (aprox.)'], ['💵 Fica pra você (já sem imposto)']]);
+  s.getRange('B13').setFormula('="Daqui a "&C7&" meses você terá"');
+  s.getRange('C13').setFormula(f('=INDEX(H17:H137,' + MESES + '+1)'));
+  s.getRange('C14').setFormula(f('=C5+C6*' + MESES));
+  s.getRange('C15').setFormula('=C13-C14');
+  s.getRange('C16').setFormula(f('=C15*IF(C7*30<=180,0.225,IF(C7*30<=360,0.2,IF(C7*30<=720,0.175,0.15)))'));
+  s.getRange('C17').setFormula('=C13-C16');
+  estilo(s.getRange('B13:C17'), { fmt: FMT_BRL });
+  s.getRange('B13:C17').setBorder(null, null, true, null, null, true, COR.LINE, SpreadsheetApp.BorderStyle.SOLID);
+  s.getRange('B13').setFontWeight('bold'); s.getRange('B17').setFontWeight('bold');
+  s.getRange('C13').setFontWeight('bold').setFontSize(14).setFontColor(COR.PURPLE);
+  s.getRange('C15').setFontWeight('bold').setFontColor('#1B8A5A');
+  s.getRange('C17').setFontWeight('bold').setFontSize(12).setFontColor(COR.PURPLE);
+  s.setRowHeights(13, 5, 24);
+
+  secao(s, 'B19:C19', '🤔 E se o dinheiro ficasse em outro lugar?', COR.GOLD);
+  s.getRange('B20:C23').setValues([['🛏️ Debaixo do colchão (sem render)', '=C14'], ['🐷 Na poupança', ''],
+    ['🌱 No CDI (já sem imposto)', '=C17'], ['Quanto o CDI ganha da poupança', '=C22-C21']]);
+  s.getRange('C21').setFormula(f('=INDEX(I17:I137,' + MESES + '+1)'));
+  estilo(s.getRange('B20:C23'), { fmt: FMT_BRL, border: true });
+  s.getRange('B23:C23').setFontWeight('bold');
+
+  secao(s, 'E15:I15', '📅 Mês a mês', COR.NAVY);
+  s.getRange('E16:I16').setValues([['Mês', 'Guardei no mês', 'Rendeu no mês', 'Total no CDI', 'Total na poupança']]);
+  estilo(s.getRange('E16:I16'), { bold: true, color: '#FFFFFF', bg: COR.NAVY, h: 'center', wrap: true, border: true });
+  s.getRange('E17:I17').setValues([['Hoje', '=C5', 0, '=C5', '=C5']]);
+  const t = [];
+  for (let i = 1; i <= 120; i++) {
+    const r = 17 + i;
+    t.push([
+      f('=IF(' + i + '>$C$7,"",' + i + ')'),
+      f('=IF(E' + r + '="","",$C$6)'),
+      f('=IF(E' + r + '="","",H' + (r - 1) + '*$C$9)'),
+      f('=IF(E' + r + '="","",H' + (r - 1) + '+G' + r + '+F' + r + ')'),
+      f('=IF(E' + r + '="","",I' + (r - 1) + '*(1+$C$10)+F' + r + ')'),
+    ]);
+  }
+  s.getRange(18, 5, 120, 5).setFormulas(t);
+  estilo(s.getRange('E17:I137'), { border: true });
+  s.getRange('F17:I137').setNumberFormat(FMT_BRL);
+  s.getRange('E17:E137').setHorizontalAlignment('center');
+  s.getRange('G17:G137').setFontColor('#1B8A5A');
+  s.getRange('H17:H137').setFontWeight('bold');
+  s.getRange('I17:I137').setFontColor(COR.GRAY);
+  s.setFrozenRows(0);
+
+  const grafico = s.newChart().asColumnChart()
+    .addRange(s.getRange('B20:C22'))
+    .setOption('title', 'Mesmo dinheiro, lugares diferentes')
+    .setOption('legend', { position: 'none' })
+    .setOption('colors', [COR.PURPLE])
+    .setOption('vAxis', { format: '"R$" #,##0', minValue: 0 })
+    .setPosition(25, 2, 0, 0)
+    .build();
+  s.insertChart(grafico);
+}
+
+function blocoResumo(f) {
+  const R = aba('🏠 Resumo');
+  const MRq = "'" + ABA_REAIS + "'";
+  const cur = function (tipo) {
+    return 'SUMIFS(' + MRq + '!$E:$E,' + MRq + '!$F:$F,"' + tipo + '",' + MRq + '!$B:$B,">="&Listas!$E$3,' + MRq + '!$B:$B,"<="&Listas!$E$4)';
+  };
+  R.getRange('G13').setFormula(f('=' + cur('Investimento') + '-' + cur('Resgate')));
+  R.getRange('B16:G20').breakApart().clear();
+  secao(R, 'B16:G16', '🌱 Minha caixinha (CDI) e total guardado', COR.TEAL);
+  const CDI = "'" + ABA_CDI + "'!";
+  const DOL = "'" + ABA_DOLARES + "'!";
+  R.getRange('B17:G18').setValues([
+    ['🌱 Tenho no CDI', '=' + CDI + 'K16', '🎉 O CDI já me deu', '=' + CDI + 'K17', '💪 Coloquei do bolso', '=' + CDI + 'K13'],
+    ['💵 Dólares (em R$, hoje)', '=' + DOL + 'P12', '💎 Total guardado (CDI + dólares)', '=C17+C18', '🧾 Se resgatar o CDI hoje', '=' + CDI + 'K19'],
+  ]);
+  estilo(R.getRange('B17:G18'), { bg: COR.SOFT_TEAL, border: true, wrap: true });
+  ['B17', 'B18', 'D17', 'D18', 'F17', 'F18'].forEach(function (a) { R.getRange(a).setFontWeight('bold'); });
+  ['C17', 'C18', 'E17', 'E18', 'G17', 'G18'].forEach(function (a) {
+    R.getRange(a).setNumberFormat(FMT_BRL).setFontWeight('bold').setFontSize(12).setHorizontalAlignment('right');
+  });
+  R.getRange('E18').setFontColor(COR.PURPLE).setFontSize(13);
+  R.getRange('C17').setFontColor(COR.TEAL);
+  R.setRowHeights(17, 2, 30);
+}
+
+function guiaAbasNovas() {
+  const G = aba('👋 Comece aqui');
+  const achado = G.getRange('B:B').createTextFinder(ABA_DOLARES).matchEntireCell(true).findNext();
+  if (!achado || G.getRange(achado.getRow() + 1, 2).getValue() === ABA_CDI) return;
+  const r = achado.getRow();
+  G.insertRowsAfter(r, 2);
+  G.getRange(r, 2, 1, 2).copyFormatToRange(G, 2, 3, r + 1, r + 2);
+  G.getRange(r + 1, 2, 2, 2).setValues([
+    [ABA_CDI, 'Quanto você tem na caixinha e quanto já rendeu. Os depósitos e resgates vêm sozinhos do 📒 Meus Reais.'],
+    [ABA_SIM, "Para sonhar: 'se eu guardar R$ X por mês, quanto terei daqui a 2 anos?'"],
+  ]);
+  G.getRange(r + 1, 2).setBackground(COR.TEAL); G.getRange(r + 1, 3).setBackground(COR.SOFT_TEAL);
+  G.getRange(r + 2, 2).setBackground(COR.PURPLE); G.getRange(r + 2, 3).setBackground(COR.SOFT_PURPLE);
+  G.setRowHeights(r + 1, 2, 32);
 }
 
 /** Guarda uma cópia dos dados atuais antes de sobrescrever. */
