@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { hoje, mesKey, nomeMes, resumoCDI, resumoDolar, resumoMes, saldoReais, somaMes, toISO } from '../calc'
 import { categoria } from '../categorias'
-import { fmtBRL, fmtData, fmtPct0, fmtUSD } from '../format'
+import { fmtBRL, fmtData, fmtPct, fmtPct0, fmtUSD } from '../format'
 import { useMercado } from '../mercado'
 import { isIOS, isInstalado } from '../plataforma'
 import { useAppState } from '../store'
@@ -24,6 +24,9 @@ export function Inicio({ onEdit, onSettings, onGo }: { onEdit: (id: string) => v
   const dol = resumoDolar(s, m)
   const mes = resumoMes(s.movimentos, mesKey(hoje()))
   const total = cdi.saldo + dol.vale
+  // do bolso dela: o que ficou no CDI (guardou − resgatou) + o que saiu da conta pelos dólares
+  const colocado = cdi.colocado + dol.pago
+  const ganho = total - colocado
   const recentes = [...s.movimentos].sort((a, b) => b.data.localeCompare(a.data)).slice(0, 5)
   const dica = DICAS[new Date().getDate() % DICAS.length]
 
@@ -43,8 +46,16 @@ export function Inicio({ onEdit, onSettings, onGo }: { onEdit: (id: string) => v
       <SalvarPendente />
 
       <section className="rounded-[1.75rem] bg-gradient-to-br from-teal to-purple p-5 text-white shadow-lg shadow-purple/20">
-        <p className="text-sm text-white/80">💎 Total guardado</p>
+        <p className="text-sm text-white/80">💎 Total guardado (quanto vale hoje)</p>
         <p className="num mt-1 text-[2.4rem] leading-none font-extrabold tracking-tight">{fmtBRL(total)}</p>
+        {colocado > 0 && (
+          <p className="num mt-2 text-xs text-white/90">
+            💪 Você colocou {fmtBRL(colocado)} ·{' '}
+            <span className="font-bold">
+              {ganho >= 0 ? '📈 ganhou' : '📉 perdeu'} {fmtBRL(Math.abs(ganho))} ({fmtPct(Math.abs(ganho) / colocado)})
+            </span>
+          </p>
+        )}
         <div className="mt-5 grid grid-cols-2 gap-2">
           <button onClick={() => onGo('cdi')} className="press rounded-2xl bg-white/15 p-3 text-left backdrop-blur">
             <p className="text-xs text-white/80">🌱 No CDI</p>
