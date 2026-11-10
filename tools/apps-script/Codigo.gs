@@ -132,6 +132,83 @@ function escrever(nome, colunas, linhas) {
   if (linhas.length) s.getRange(PRIMEIRA, 2, linhas.length, colunas).setValues(linhas);
 }
 
+// ---------------------------------------------------------------- ordem por data
+
+/**
+ * Gatilho simples: quando uma linha fica completa (data + categoria + valor em Meus Reais;
+ * data + R$ + US$ em Meus Dólares), a tabela se ordena por data. Linhas incompletas não
+ * disparam, para a linha não "pular" enquanto ela ainda está digitando.
+ */
+function onEdit(e) {
+  const s = e.range.getSheet();
+  const cfg = s.getName() === ABA_REAIS ? { colunas: 4, obrigatorias: [0, 2, 3] }
+    : s.getName() === ABA_DOLARES ? { colunas: 6, obrigatorias: [0, 2, 3] } : null;
+  if (!cfg) return;
+  const r0 = e.range.getRow();
+  const r1 = r0 + e.range.getNumRows() - 1;
+  const c0 = e.range.getColumn();
+  const c1 = c0 + e.range.getNumColumns() - 1;
+  if (r1 < PRIMEIRA || r0 > ULTIMA || c1 < 2 || c0 > 1 + cfg.colunas) return;
+  const linha = s.getRange(Math.max(r0, PRIMEIRA), 2, 1, cfg.colunas).getValues()[0];
+  if (!cfg.obrigatorias.every(function (i) { return linha[i] !== ''; })) return;
+  ordenar(s, cfg.colunas);
+}
+
+function ordenar(s, colunas) {
+  s.getRange(PRIMEIRA, 2, LINHAS, colunas).sort({ column: 2, ascending: true });
+}
+
+// ---------------------------------------------------------------- ajuste de nov/2026
+
+/**
+ * Rodar uma vez no editor: investimento deixa de contar como gasto no "Sobrou" e no
+ * acumulado, e as duas tabelas ficam ordenadas por data.
+ */
+function ajustarPlanilha() {
+  const mr = aba(ABA_REAIS);
+  const g = [];
+  for (let r = PRIMEIRA; r <= ULTIMA; r++) {
+    g.push(['=IF(D' + r + '="","",SUMIFS($E$6:E' + r + ',$F$6:F' + r + ',"Entrada")-SUMIFS($E$6:E' + r + ',$F$6:F' + r + ',"Gasto"))']);
+  }
+  mr.getRange(PRIMEIRA, 7, LINHAS, 1).setFormulas(g);
+  mr.getRange('G5').setValue('Acumulado\n(entrou − gastei)');
+  const mes = ',$B:$B,">="&Listas!$E$1,$B:$B,"<="&Listas!$E$2)';
+  mr.getRange('I9:K12').setValues([
+    ['🟰 Sobrou (entrou − gastei)', '=J7-J8', 'investimento não é gasto'],
+    ['💵 Guardei / comprei dólar', '=SUMIFS($E:$E,$F:$F,"Investimento"' + mes, 'sai do que sobrou'],
+    ['📊 Da minha renda, guardei', '=IF(J7>0,J10/J7,0)', 'meta comum: 10% a 20%'],
+    ['💰 Acumulado em reais (tudo que entrou − tudo que gastei)',
+      '=SUMIFS($E$6:$E$405,$F$6:$F$405,"Entrada")-SUMIFS($E$6:$E$405,$F$6:$F$405,"Gasto")', ''],
+  ]);
+  mr.getRange('J9:J10').setNumberFormat('"R$" #,##0.00;[Red]-"R$" #,##0.00');
+  // verde/vermelho passa do J10 para o J9 (Sobrou)
+  const j9 = mr.getRange('J9');
+  const regras = mr.getConditionalFormatRules().filter(function (rg) {
+    return !rg.getRanges().some(function (x) { return x.getA1Notation() === 'J10'; });
+  });
+  regras.push(SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=AND(ISNUMBER(J9),J9>0)')
+    .setFontColor('#1B8A5A').setBold(true).setRanges([j9]).build());
+  regras.push(SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=AND(ISNUMBER(J9),J9<0)')
+    .setFontColor('#C0392B').setBold(true).setRanges([j9]).build());
+  mr.setConditionalFormatRules(regras);
+
+  const resumo = aba('🏠 Resumo');
+  resumo.getRange('C14').setFormula('=C13-E13');
+  resumo.getRange('B4').setValue('💰 Acumulado em reais');
+  resumo.getRange('B6').setValue('entrou − gastei');
+
+  const guia = aba('👋 Comece aqui');
+  const achado = guia.getRange('B:B').createTextFinder('Saldo em reais').matchEntireCell(true).findNext();
+  if (achado) {
+    achado.setValue('Acumulado em reais');
+    achado.offset(0, 1).setValue('Tudo o que entrou menos tudo o que você gastou. Investir (dólar, caixinha) não é gasto: o dinheiro continua seu, só mudou de lugar.');
+  }
+
+  ordenar(mr, 4);
+  ordenar(aba(ABA_DOLARES), 6);
+  Logger.log('Planilha ajustada.');
+}
+
 /** Guarda uma cópia dos dados atuais antes de sobrescrever. */
 function backup() {
   const ss = SpreadsheetApp.getActive();
