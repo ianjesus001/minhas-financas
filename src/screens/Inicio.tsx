@@ -61,7 +61,7 @@ export function Inicio({ onEdit, onSettings, onGo }: { onEdit: (id: string) => v
 
       {s.movimentos.length > 0 && (
         <div className="mt-4">
-          <SaldoReais saldo={saldoReais(s.movimentos).saldo} hint="tudo que entrou − tudo que saiu" onClick={() => onGo('mes')} />
+          <SaldoReais saldo={saldoReais(s.movimentos).saldo} hint="tudo que entrou − tudo que gastei" onClick={() => onGo('mes')} />
         </div>
       )}
 
@@ -126,21 +126,21 @@ function Legenda({ cor, label, valor, pct }: { cor: string; label: string; valor
 function MesCard({ mes }: { mes: ReturnType<typeof resumoMes> }) {
   if (!mes.movs.length)
     return <Empty emoji="💼" title="Mês começando" text="Quando o salário cair, toque em + → Recebi. Depois anote os gastos." />
-  const usado = mes.entrou > 0 ? (mes.gastei + mes.guardei) / mes.entrou : 1
+  const usado = mes.entrou > 0 ? mes.gastei / mes.entrou : 1
   return (
     <div className="card p-5">
-      <p className="text-sm text-muted">🟰 Sobrou na conta</p>
+      <p className="text-sm text-muted">🟰 Sobrou (entrou − gastei)</p>
       <p className={`num text-3xl font-extrabold ${mes.sobrou < 0 ? 'text-bad' : ''}`}>{fmtBRL(mes.sobrou)}</p>
       <div className="mt-3 mb-1">
         <Progress value={usado} color={usado > 1 ? 'var(--color-bad)' : 'var(--color-coral)'} />
       </div>
       <p className="mb-4 text-xs text-muted">
-        {mes.entrou > 0 ? `Você já usou ${fmtPct0(Math.min(usado, 9.99))} do que entrou` : 'Anote o que entrou para ver quanto sobra'}
+        {mes.entrou > 0 ? `Você gastou ${fmtPct0(Math.min(usado, 9.99))} do que entrou (investir não conta como gasto)` : 'Anote o que entrou para ver quanto sobra'}
       </p>
       <div className="grid grid-cols-3 gap-3">
         <Stat label="⬆️ Entrou" value={fmtBRL(mes.entrou)} tone="good" />
         <Stat label="⬇️ Gastei" value={fmtBRL(mes.gastei)} />
-        <Stat label="🌱 Guardei" value={fmtBRL(mes.guardei)} hint={mes.entrou > 0 ? `${fmtPct0(mes.pctGuardado)} da renda` : undefined} />
+        <Stat label="💵 Guardei / dólar" value={fmtBRL(mes.guardei)} hint={mes.entrou > 0 ? `${fmtPct0(mes.pctGuardado)} da renda` : undefined} />
       </div>
     </div>
   )
@@ -157,7 +157,7 @@ function SaldoReais({ saldo, hint, onClick }: { saldo: number; hint: string; onC
     <button onClick={onClick} disabled={!onClick} className="press card flex w-full items-center gap-4 p-4 text-left disabled:active:scale-100">
       <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-coral-soft text-2xl">💰</span>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm text-muted">Saldo em reais</span>
+        <span className="block text-sm text-muted">Acumulado em reais</span>
         <span className={`num block text-2xl font-extrabold ${saldo < 0 ? 'text-bad' : ''}`}>{fmtBRL(saldo)}</span>
         <span className="block truncate text-[11px] text-muted">{hint}</span>
       </span>

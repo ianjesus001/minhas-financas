@@ -145,13 +145,13 @@ title(ws, "B1:L1", "📒 Meus Reais — tudo o que entrou e saiu",
       "Uma linha para cada dinheiro que entrou ou saiu da sua conta em reais. Escreva só nas células amarelinhas; o resto a planilha calcula.", CORAL)
 section(ws, "B4:G4", "✍️ Meus registros", CORAL)
 header_row(ws, 5, [("B", "Data"), ("C", "Descrição (o que foi?)"), ("D", "Categoria (escolha na lista ▾)"),
-                   ("E", "Valor (R$)"), ("F", "Tipo\n(automático)"), ("G", "Saldo em reais\n(automático)")], CORAL)
+                   ("E", "Valor (R$)"), ("F", "Tipo\n(automático)"), ("G", "Acumulado\n(entrou − gastei)")], CORAL)
 for r in range(FIRST, LAST + 1):
     for col, fmt, h in (("B", DATE, "center"), ("C", None, "left"), ("D", None, "left"), ("E", BRL, "right")):
         put(ws, f"{col}{r}", fmt=fmt, h=h, bg=INPUT, border=BOX)
     put(ws, f"F{r}", f'=IF(D{r}="","",IFERROR(INDEX({TIPO_RNG},MATCH(D{r},{CAT_RNG},0)),"?"))',
         color=GRAY, h="center", border=BOX, size=9)
-    put(ws, f"G{r}", f'=IF(D{r}="","",SUMIFS($E${FIRST}:E{r},$F${FIRST}:F{r},"Entrada")-SUMIFS($E${FIRST}:E{r},$F${FIRST}:F{r},"<>Entrada"))',
+    put(ws, f"G{r}", f'=IF(D{r}="","",SUMIFS($E${FIRST}:E{r},$F${FIRST}:F{r},"Entrada")-SUMIFS($E${FIRST}:E{r},$F${FIRST}:F{r},"Gasto"))',
         fmt=BRL, h="right", border=BOX)
 dv = DataValidation(type="list", formula1=CAT_RNG, allow_blank=True,
                     showErrorMessage=True, errorTitle="Categoria", error="Escolha uma categoria da lista ▾")
@@ -176,18 +176,18 @@ rng_m = f'$B:$B,">="&{SL}!$E$1,$B:$B,"<="&{SL}!$E$2'
 for r, lab, fml, fmt, note in [
         (7, "⬆️ Entrou", f'=SUMIFS($E:$E,$F:$F,"Entrada",{rng_m})', BRL, "salário e outras entradas"),
         (8, "⬇️ Gastei", f'=SUMIFS($E:$E,$F:$F,"Gasto",{rng_m})', BRL, "tudo o que foi gasto"),
-        (9, "💵 Guardei / comprei dólar", f'=SUMIFS($E:$E,$F:$F,"Investimento",{rng_m})', BRL, "dólares + caixinha"),
-        (10, "🟰 Sobrou no mês", "=J7-J8-J9", BRL, "entrou − gastei − guardei"),
-        (11, "📊 Da minha renda, guardei", "=IF(J7>0,J9/J7,0)", PCT, "meta comum: 10% a 20%")]:
+        (9, "🟰 Sobrou (entrou − gastei)", "=J7-J8", BRL, "investimento não é gasto"),
+        (10, "💵 Guardei / comprei dólar", f'=SUMIFS($E:$E,$F:$F,"Investimento",{rng_m})', BRL, "sai do que sobrou"),
+        (11, "📊 Da minha renda, guardei", "=IF(J7>0,J10/J7,0)", PCT, "meta comum: 10% a 20%")]:
     put(ws, f"I{r}", lab, bold=True, border=BOTTOM)
     put(ws, f"J{r}", fml, fmt=fmt, h="right", bold=True, size=11, border=BOTTOM)
     put(ws, f"K{r}", note, size=8, color=GRAY, italic=True, border=BOTTOM, wrap=True)
     ws.row_dimensions[r].height = 22
-put(ws, "I12", "💰 Saldo em reais hoje (tudo que entrou − tudo que saiu)", bold=True, border=BOTTOM, wrap=True)
-put(ws, "J12", f'=SUMIFS($E${FIRST}:$E${LAST},$F${FIRST}:$F${LAST},"Entrada")-SUMIFS($E${FIRST}:$E${LAST},$F${FIRST}:$F${LAST},"<>Entrada")',
+put(ws, "I12", "💰 Acumulado em reais (tudo que entrou − tudo que gastei)", bold=True, border=BOTTOM, wrap=True)
+put(ws, "J12", f'=SUMIFS($E${FIRST}:$E${LAST},$F${FIRST}:$F${LAST},"Entrada")-SUMIFS($E${FIRST}:$E${LAST},$F${FIRST}:$F${LAST},"Gasto")',
     fmt=BRL, h="right", bold=True, size=12, color=CORAL, border=BOTTOM)
 ws.row_dimensions[12].height = 30
-gain_colors(ws, "J10:J10")
+gain_colors(ws, "J9:J9")
 
 header_row(ws, 14, [("I", "Categoria"), ("J", "Tipo"), ("K", "Total no mês"), ("L", "% dos gastos")], NAVY)
 for i in range(NC):
@@ -314,7 +314,7 @@ def card(r, c1, c2, label, value, fmt, color, sub_label=None, sub_value=None, su
     put(ws, f"{c2}{r+2}", sub_value, size=10, bold=True, color=INK, bg=bg, fmt=sub_fmt, h="right")
     ws.row_dimensions[r].height = 22; ws.row_dimensions[r + 1].height = 40; ws.row_dimensions[r + 2].height = 20
 
-card(4, "B", "C", "💰 Saldo em reais", f"={MR}!J12", BRL, CORAL, "tudo que entrou − saiu", None)
+card(4, "B", "C", "💰 Acumulado em reais", f"={MR}!J12", BRL, CORAL, "entrou − gastei", None)
 card(4, "D", "E", "💵 Tenho em dólares", f"={DOL}!P9", USD, BLUE, "valem hoje ≈", f"={DOL}!P12", BRL)
 card(4, "F", "G", "🟰 Resultado do dólar", f"={DOL}!P15", BRL, PURPLE, "em %:", f"={DOL}!P16", PCT)
 card(8, "B", "C", "📡 Dólar agora", f"={DOL}!P5", '"R$" 0.0000', NAVY, "meu custo médio:", f"={DOL}!P11", '"R$" 0.0000')
@@ -329,7 +329,7 @@ for a, b, r, lab, fml, fmt in [
         ("B", "C", 13, "⬆️ Entrou", f'=SUMIFS({MR}!$E:$E,{MR}!$F:$F,"Entrada",{cur})', BRL),
         ("D", "E", 13, "⬇️ Gastei", f'=SUMIFS({MR}!$E:$E,{MR}!$F:$F,"Gasto",{cur})', BRL),
         ("F", "G", 13, "💵 Guardei / dólar", f'=SUMIFS({MR}!$E:$E,{MR}!$F:$F,"Investimento",{cur})', BRL),
-        ("B", "C", 14, "🟰 Sobrou no mês", "=C13-E13-G13", BRL),
+        ("B", "C", 14, "🟰 Sobrou no mês", "=C13-E13", BRL),
         ("D", "E", 14, "📊 Da renda, guardei", "=IF(C13>0,G13/C13,0)", '0%')]:
     put(ws, f"{a}{r}", lab, bold=True, bg=PASTEL[CORAL], border=BOX)
     put(ws, f"{b}{r}", fml, fmt=fmt, bold=True, size=12, h="right", bg=PASTEL[CORAL], border=BOX)
@@ -384,7 +384,7 @@ for a, b in [
         ("Spread", "A diferença entre o câmbio do app e o dólar de mercado. É mais um custo, às vezes escondido."),
         ("Variação do dólar", "Quanto o dólar subiu ou caiu desde o dia da compra. Sobe = seus dólares valem mais em reais."),
         ("Resultado", "Quanto seus dólares valem hoje em reais menos quanto saiu da sua conta para comprá-los."),
-        ("Saldo em reais", "Tudo o que entrou menos tudo o que saiu (gastos, dólares, caixinha), desde o primeiro registro.")]:
+        ("Acumulado em reais", "Tudo o que entrou menos tudo o que você gastou. Investir (dólar, caixinha) não é gasto: o dinheiro continua seu, só mudou de lugar.")]:
     put(ws, f"B{r}", a, bold=True, color=PURPLE, border=BOX, v="top")
     put(ws, f"C{r}", b, wrap=True, border=BOX, v="top")
     ws.row_dimensions[r].height = 30; r += 1

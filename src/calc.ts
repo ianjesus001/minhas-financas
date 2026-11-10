@@ -169,16 +169,20 @@ export function resumoDolar(state: AppState, m: Mercado) {
 
 export const mesKey = (d: ISODate) => d.slice(0, 7) // 'YYYY-MM'
 
-/** Tudo o que entrou menos tudo o que saiu (gastos, dólares, caixinha), igual ao "Saldo em reais" da planilha. */
+/**
+ * Tudo o que entrou menos tudo o que foi gasto, igual ao "Acumulado em reais" da planilha.
+ * Investimento (dólar, caixinha) não é gasto: o dinheiro continua dela.
+ */
 export function saldoReais(movs: Movimento[], ate: ISODate = hoje()) {
   let entrou = 0
-  let saiu = 0
+  let gastei = 0
   for (const m of movs) {
     if (m.data > ate) continue
-    if (categoria(m.categoria)?.tipo === 'Entrada') entrou += m.valor
-    else saiu += m.valor
+    const tipo = categoria(m.categoria)?.tipo ?? 'Gasto'
+    if (tipo === 'Entrada') entrou += m.valor
+    else if (tipo === 'Gasto') gastei += m.valor
   }
-  return { entrou, saiu, saldo: entrou - saiu }
+  return { entrou, gastei, saldo: entrou - gastei }
 }
 
 export function resumoMes(movs: Movimento[], key: string) {
@@ -204,7 +208,8 @@ export function resumoMes(movs: Movimento[], key: string) {
     entrou,
     gastei,
     guardei,
-    sobrou: entrou - gastei - guardei,
+    // investimento não é gasto: sai do que sobrou, mas não deixa o mês no vermelho
+    sobrou: entrou - gastei,
     pctGuardado: entrou > 0 ? guardei / entrou : 0,
     categorias,
   }
