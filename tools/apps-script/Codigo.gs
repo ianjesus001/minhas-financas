@@ -164,31 +164,46 @@ function ordenar(s, colunas) {
  * Rodar uma vez no editor: investimento deixa de contar como gasto no "Sobrou" e no
  * acumulado, e as duas tabelas ficam ordenadas por data.
  */
+/**
+ * Fórmulas escritas por script seguem o idioma da planilha: em português/espanhol o separador
+ * é ";" em vez de ",". Testa numa célula da aba Listas qual funciona.
+ */
+function separador() {
+  const c = aba('Listas').getRange('Z1');
+  c.setFormula('=IF(1,1,0)');
+  SpreadsheetApp.flush();
+  const ok = c.getValue() === 1;
+  c.clearContent();
+  return ok ? ',' : ';';
+}
+
 function ajustarPlanilha() {
+  const sep = separador();
+  const f = function (formula) { return sep === ',' ? formula : formula.replace(/,/g, ';'); };
   const mr = aba(ABA_REAIS);
   const g = [];
   for (let r = PRIMEIRA; r <= ULTIMA; r++) {
-    g.push(['=IF(D' + r + '="","",SUMIFS($E$6:E' + r + ',$F$6:F' + r + ',"Entrada")-SUMIFS($E$6:E' + r + ',$F$6:F' + r + ',"Gasto"))']);
+    g.push([f('=IF(D' + r + '="","",SUMIFS($E$6:E' + r + ',$F$6:F' + r + ',"Entrada")-SUMIFS($E$6:E' + r + ',$F$6:F' + r + ',"Gasto"))')]);
   }
   mr.getRange(PRIMEIRA, 7, LINHAS, 1).setFormulas(g);
   mr.getRange('G5').setValue('Acumulado\n(entrou − gastei)');
   const mes = ',$B:$B,">="&Listas!$E$1,$B:$B,"<="&Listas!$E$2)';
   mr.getRange('I9:K12').setValues([
     ['🟰 Sobrou (entrou − gastei)', '=J7-J8', 'investimento não é gasto'],
-    ['💵 Guardei / comprei dólar', '=SUMIFS($E:$E,$F:$F,"Investimento"' + mes, 'sai do que sobrou'],
-    ['📊 Da minha renda, guardei', '=IF(J7>0,J10/J7,0)', 'meta comum: 10% a 20%'],
+    ['💵 Guardei / comprei dólar', f('=SUMIFS($E:$E,$F:$F,"Investimento"' + mes), 'sai do que sobrou'],
+    ['📊 Da minha renda, guardei', f('=IF(J7>0,J10/J7,0)'), 'meta comum: 10% a 20%'],
     ['💰 Acumulado em reais (tudo que entrou − tudo que gastei)',
-      '=SUMIFS($E$6:$E$405,$F$6:$F$405,"Entrada")-SUMIFS($E$6:$E$405,$F$6:$F$405,"Gasto")', ''],
+      f('=SUMIFS($E$6:$E$405,$F$6:$F$405,"Entrada")-SUMIFS($E$6:$E$405,$F$6:$F$405,"Gasto")'), ''],
   ]);
   mr.getRange('J9:J10').setNumberFormat('"R$" #,##0.00;[Red]-"R$" #,##0.00');
   // verde/vermelho passa do J10 para o J9 (Sobrou)
   const j9 = mr.getRange('J9');
   const regras = mr.getConditionalFormatRules().filter(function (rg) {
-    return !rg.getRanges().some(function (x) { return x.getA1Notation() === 'J10'; });
+    return !rg.getRanges().some(function (x) { return x.getA1Notation() === 'J10' || x.getA1Notation() === 'J9'; });
   });
-  regras.push(SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=AND(ISNUMBER(J9),J9>0)')
+  regras.push(SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied(f('=AND(ISNUMBER(J9),J9>0)'))
     .setFontColor('#1B8A5A').setBold(true).setRanges([j9]).build());
-  regras.push(SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=AND(ISNUMBER(J9),J9<0)')
+  regras.push(SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied(f('=AND(ISNUMBER(J9),J9<0)'))
     .setFontColor('#C0392B').setBold(true).setRanges([j9]).build());
   mr.setConditionalFormatRules(regras);
 
