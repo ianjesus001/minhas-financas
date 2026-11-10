@@ -4,6 +4,7 @@ import { gerarExcel } from '../excel/exportXlsx'
 import { fmtData, fmtPct } from '../format'
 import { cdiAnualAtual, dolarHoje, getMercado, useMercado, type Mercado } from '../mercado'
 import { salvarArquivo } from '../plataforma'
+import { PlanilhaCard } from './Planilha'
 import { getState, setState, updateConfig, useAppState, validar } from '../store'
 import type { AppState } from '../types'
 import { Button, Details, Field, Header, Info, MoneyInput, SectionTitle, inputCls } from '../ui'
@@ -110,6 +111,9 @@ export function Ajustes({ onBack }: { onBack: () => void }) {
           </Field>
         )}
       </div>
+
+      <SectionTitle>☁️ Planilha do Google</SectionTitle>
+      <PlanilhaCard />
 
       <SectionTitle>📊 Planilha do Excel</SectionTitle>
       <div className="card p-5">

@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "template": "python tools/gerar_planilha.py public/template.xlsx --template",
-    "test:ios": "node tools/ios-test.mjs"
+    "test:ios": "node tools/ios-test.mjs",
+    "test:sync": "node tools/sync-test.mjs"
   },
   "dependencies": {
     "jszip": "^3.10.2",

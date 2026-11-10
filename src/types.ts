@@ -53,6 +53,11 @@ export interface Config {
   simInicial: number
   simMensal: number
   simMeses: number
+  /** Link do Apps Script da planilha do Google (com ?k=chave); '' = não conectada. */
+  planilhaLink: string
+  planilhaNome: string
+  /** Última vez que app e planilha ficaram iguais (Salvar ou Trazer). */
+  planilhaSync: { em: string; hash: string } | null
 }
 
 export interface AppState {

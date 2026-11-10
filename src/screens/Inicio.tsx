@@ -5,6 +5,7 @@ import { fmtBRL, fmtData, fmtPct0, fmtUSD } from '../format'
 import { useMercado } from '../mercado'
 import { isIOS, isInstalado } from '../plataforma'
 import { useAppState } from '../store'
+import { SalvarPendente } from './Planilha'
 import type { Movimento } from '../types'
 import { Donut, Empty, Header, Info, MovRow, Progress, SectionTitle, Stat } from '../ui'
 
@@ -39,6 +40,7 @@ export function Inicio({ onEdit, onSettings, onGo }: { onEdit: (id: string) => v
       />
 
       <AvisoInstalar />
+      <SalvarPendente />
 
       <section className="rounded-[1.75rem] bg-gradient-to-br from-teal to-purple p-5 text-white shadow-lg shadow-purple/20">
         <p className="text-sm text-white/80">💎 Total guardado</p>

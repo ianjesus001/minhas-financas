@@ -29,6 +29,10 @@ Teste do exportador: `node tools/test-export.mjs` (gera `tools/out-test.xlsx`).
 
 `python tools/planilha-para-backup.py "Minhas Finanças.xlsx"` gera um JSON de backup; no iPhone: Ajustes → Restaurar backup.
 
+## Planilha do Google (Meus Reais e Dólares)
+
+`tools/gerar_planilha_dolares.py` gera a planilha (subir no Drive para converter). `tools/apps-script/Codigo.gs` é a ponte: colar em Extensões → Apps Script, definir a `CHAVE`, implantar como App da Web (executar como eu, acesso qualquer pessoa) e colar `<URL>?k=<CHAVE>` no app em Ajustes → Planilha do Google. Teste com servidor simulado: `npm run test:sync`.
+
 ## Teste no motor do Safari
 
 `npm run build`, `npm run preview` e `npm run test:ios` (Playwright WebKit, iPhone 15; capturas em `tools/shots/`).

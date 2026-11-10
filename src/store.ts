@@ -16,6 +16,9 @@ export const CONFIG_PADRAO: Config = {
   simInicial: 796,
   simMensal: 300,
   simMeses: 24,
+  planilhaLink: '',
+  planilhaNome: '',
+  planilhaSync: null,
 }
 
 const ESTADO_INICIAL: AppState = {
