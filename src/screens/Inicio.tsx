@@ -140,7 +140,7 @@ function MesCard({ mes }: { mes: ReturnType<typeof resumoMes> }) {
       <div className="grid grid-cols-3 gap-3">
         <Stat label="⬆️ Entrou" value={fmtBRL(mes.entrou)} tone="good" />
         <Stat label="⬇️ Gastei" value={fmtBRL(mes.gastei)} />
-        <Stat label="💵 Guardei / dólar" value={fmtBRL(mes.guardei)} hint={mes.entrou > 0 ? `${fmtPct0(mes.pctGuardado)} da renda` : undefined} />
+        <Stat label="💵 Dólar + caixinha" value={fmtBRL(mes.guardei)} hint={mes.entrou > 0 ? `${fmtPct0(mes.pctGuardado)} da renda` : undefined} />
       </div>
     </div>
   )

@@ -124,6 +124,7 @@ cats = [
     ("📱 Assinaturas (streaming, celular)", "Gasto"), ("🎁 Presentes", "Gasto"), ("❓ Outros gastos", "Gasto"),
     ("💼 Salário", "Entrada"), ("✨ Renda extra", "Entrada"), ("↩️ Outras entradas", "Entrada"),
     ("💵 Comprei dólar", "Investimento"), ("🌱 Guardei (caixinha / CDI)", "Investimento"),
+    ("↩️ Resgatei da caixinha", "Resgate"),  # diminui o guardado; não é entrada
 ]
 NC = len(cats); NG = sum(1 for _, t in cats if t == "Gasto")
 wl["A1"], wl["B1"] = "Categoria", "Tipo"
@@ -179,7 +180,7 @@ for r, lab, fml, fmt, note in [
         (7, "⬆️ Entrou", f'=SUMIFS($E:$E,$F:$F,"Entrada",{rng_m})', BRL, "salário e outras entradas"),
         (8, "⬇️ Gastei", f'=SUMIFS($E:$E,$F:$F,"Gasto",{rng_m})', BRL, "tudo o que foi gasto"),
         (9, "🟰 Sobrou (entrou − gastei)", "=J7-J8", BRL, "investimento não é gasto"),
-        (10, "💵 Guardei / comprei dólar", f'=SUMIFS($E:$E,$F:$F,"Investimento",{rng_m})', BRL, "sai do que sobrou"),
+        (10, "💵 Dólar + 🌱 caixinha", f'=SUMIFS($E:$E,$F:$F,"Investimento",{rng_m})-SUMIFS($E:$E,$F:$F,"Resgate",{rng_m})', BRL, "comprei dólar + guardei − resgatei"),
         (11, "📊 Da minha renda, guardei", "=IF(J7>0,J10/J7,0)", PCT, "meta comum: 10% a 20%")]:
     put(ws, f"I{r}", lab, bold=True, border=BOTTOM)
     put(ws, f"J{r}", fml, fmt=fmt, h="right", bold=True, size=11, border=BOTTOM)
@@ -330,7 +331,7 @@ cur = f'{MR}!$B:$B,">="&{SL}!$E$3,{MR}!$B:$B,"<="&{SL}!$E$4'
 for a, b, r, lab, fml, fmt in [
         ("B", "C", 13, "⬆️ Entrou", f'=SUMIFS({MR}!$E:$E,{MR}!$F:$F,"Entrada",{cur})', BRL),
         ("D", "E", 13, "⬇️ Gastei", f'=SUMIFS({MR}!$E:$E,{MR}!$F:$F,"Gasto",{cur})', BRL),
-        ("F", "G", 13, "💵 Guardei / dólar", f'=SUMIFS({MR}!$E:$E,{MR}!$F:$F,"Investimento",{cur})', BRL),
+        ("F", "G", 13, "💵 Dólar + caixinha", f'=SUMIFS({MR}!$E:$E,{MR}!$F:$F,"Investimento",{cur})-SUMIFS({MR}!$E:$E,{MR}!$F:$F,"Resgate",{cur})', BRL),
         ("B", "C", 14, "🟰 Sobrou no mês", "=C13-E13", BRL),
         ("D", "E", 14, "📊 Da renda, guardei", "=IF(C13>0,G13/C13,0)", '0%')]:
     put(ws, f"{a}{r}", lab, bold=True, bg=PASTEL[CORAL], border=BOX)

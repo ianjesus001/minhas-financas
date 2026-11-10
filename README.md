@@ -31,7 +31,7 @@ Teste do exportador: `node tools/test-export.mjs` (gera `tools/out-test.xlsx`).
 
 ## Planilha do Google (Meus Reais e Dólares)
 
-`tools/gerar_planilha_dolares.py` gera a planilha (subir no Drive para converter). `tools/apps-script/Codigo.gs` é a ponte: colar em Extensões → Apps Script, definir a `CHAVE`, implantar como App da Web (executar como eu, acesso qualquer pessoa) e colar `<URL>?k=<CHAVE>` no app em Ajustes → Planilha do Google. Teste com servidor simulado: `npm run test:sync`.
+`tools/gerar_planilha_dolares.py` gera a planilha (subir no Drive para converter). `tools/apps-script/Codigo.gs` é a ponte: colar em Extensões → Apps Script, definir a `CHAVE`, implantar como App da Web (executar como eu, acesso qualquer pessoa) e colar `<URL>?k=<CHAVE>` no app em Ajustes → Planilha do Google. Teste com servidor simulado: `npm run test:sync`. Numa planilha nova, rode `atualizarVersaoCompleta` no editor do Apps Script para criar as abas 🌱 Meu CDI (lê as linhas Guardei/Resgatei do Meus Reais) e 🔮 Simulador e o bloco da caixinha no Resumo.
 
 ## Teste no motor do Safari
 
