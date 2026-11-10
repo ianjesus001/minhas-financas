@@ -241,9 +241,12 @@ for r in range(FIRST, LAST + 1):
 dvd3 = DataValidation(type="date", operator="greaterThan", formula1="36526", allow_blank=True,
                       showErrorMessage=True, errorTitle="Data", error="Escreva uma data, por exemplo 28/10/2026")
 ws.add_data_validation(dvd3); dvd3.add(f"B{FIRST}:B{LAST}")
-# Comprovante Wise #6365993574
-ws[f"B{FIRST}"], ws[f"C{FIRST}"], ws[f"D{FIRST}"], ws[f"E{FIRST}"] = dt.date(2026, 10, 28), "Wise", 457, 81.87
-ws[f"F{FIRST}"], ws[f"G{FIRST}"] = 5.3544, 18.62
+# Comprovantes Wise #6365993574 e #6453615175
+for i, (d, onde, brl, usd, cambio, fee) in enumerate([
+        (dt.date(2026, 10, 28), "Wise", 457, 81.87, 5.3544, 18.62),
+        (dt.date(2026, 11, 9), "Wise", 600, 104.40, 5.5174, 23.97)]):
+    r = FIRST + i
+    ws[f"B{r}"], ws[f"C{r}"], ws[f"D{r}"], ws[f"E{r}"], ws[f"F{r}"], ws[f"G{r}"] = d, onde, brl, usd, cambio, fee
 zebra(ws, f"H{FIRST}:M{LAST}")
 gain_colors(ws, f"J{FIRST}:M{LAST}")
 
