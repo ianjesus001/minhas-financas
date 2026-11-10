@@ -7,7 +7,7 @@ const APP = process.argv[2] ?? 'http://localhost:4173/minhas-financas/'
 const CHAVE = 'teste123'
 let planilha = {
   reais: [
-    { data: '2026-10-26', descricao: 'Resgate CDI Inter → Nubank', categoria: '↩️ Outras entradas', valor: 796 },
+    { data: '2026-10-26', descricao: 'Resgate CDI Inter → Nubank', categoria: '↩️ Resgatei da caixinha', valor: 790 },
     { data: '2026-10-26', descricao: 'Caixinha Nubank', categoria: '🌱 Guardei (caixinha / CDI)', valor: 796 },
     { data: '2026-11-09', descricao: 'Salário', categoria: '💼 Salário', valor: 600 },
     { data: '2026-11-09', descricao: 'Wise', categoria: '💵 Comprei dólar', valor: 600 },
@@ -70,13 +70,14 @@ await page.getByText(/Conectado a "Meus Reais e Dólares"/).waitFor()
 ok(true, 'conecta com a chave certa')
 
 await page.getByRole('button', { name: /Trazer da planilha/ }).click()
-await page.getByText(/4 registros em reais e 2 compras de dólar/).waitFor()
+await page.getByText(/4 registros em reais, 2 compras de dólar e 2 movimentos da caixinha/).waitFor()
 let st = await estado()
 ok(st.movimentos.length === 4 && st.dolares.length === 2, 'trouxe 4 registros em reais e 2 compras')
-ok(st.movimentos.some((m) => m.categoria === '🌱 Guardei no CDI' && m.linkId === 'inicio'), 'caixinha ligada ao depósito de CDI do app')
+ok(st.cdi.length === 2 && st.cdi.some((c) => c.tipo === 'Guardei' && c.valor === 796) && st.cdi.some((c) => c.tipo === 'Resgatei' && c.valor === 790), 'aba CDI montada a partir da planilha (guardei + resgatei)')
+ok(st.movimentos.filter((m) => /Guardei no CDI|Resgatei/.test(m.categoria)).every((m) => st.cdi.some((c) => c.id === m.linkId)), 'cada linha da caixinha ligada ao seu registro de CDI')
 const compra = st.dolares.find((d) => d.data === '2026-11-09')
 ok(compra?.cambio === 5.5174 && st.movimentos.some((m) => m.linkId === compra.id), 'compra de 09/11 ligada ao Meus Reais')
-ok(st.cdi.length === 1, 'CDI do app não mudou')
+ok(!st.cdi.some((c) => c.id === 'inicio'), 'CDI de exemplo do app foi substituído pelo da planilha')
 
 // anota um gasto e salva pelo aviso do Início
 await page.getByRole('button', { name: 'Pronto' }).click()
@@ -93,7 +94,7 @@ await page.getByRole('button', { name: 'Salvar', exact: true }).click()
 await page.getByText('Salvo na planilha!').waitFor()
 ok(recebido?.contentType?.startsWith('text/plain'), 'POST sem preflight (text/plain)')
 ok(recebido?.reais.length === 5 && recebido.reais.some((r) => r.categoria === '🛒 Mercado' && r.valor === 35.9), 'planilha recebeu o gasto novo')
-ok(recebido?.reais.some((r) => r.categoria === '🌱 Guardei (caixinha / CDI)'), 'categoria da caixinha volta com o nome da planilha')
+ok(recebido?.reais.some((r) => r.categoria === '🌱 Guardei (caixinha / CDI)') && recebido.reais.some((r) => r.categoria === '↩️ Resgatei da caixinha'), 'categorias da caixinha voltam com o nome da planilha')
 ok(recebido?.dolares.length === 2 && recebido.dolares.every((x) => x.cambio && x.taxas), 'compras de dólar com câmbio e taxas')
 await page.waitForTimeout(3500)
 ok(!(await page.getByText('Há mudanças não salvas').isVisible()), 'aviso some depois de salvar')

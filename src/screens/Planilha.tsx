@@ -80,11 +80,11 @@ export function PlanilhaCard() {
           onClick={() => {
             const aviso = pendente
               ? 'Você tem mudanças no app que ainda não foram salvas na planilha e vão se perder. Trazer mesmo assim?'
-              : 'Isso vai trocar os reais e dólares do app pelos da planilha. Continuar?'
+              : 'Isso vai trocar os reais, dólares e o CDI do app pelos da planilha. Continuar?'
             if (!confirm(aviso)) return
             rodar('Trazendo da planilha...', async () => {
               const r = await trazerDaPlanilha()
-              return `Pronto! ${r.reais} registros em reais e ${r.dolares} compras de dólar.`
+              return `Pronto! ${r.reais} registros em reais, ${r.dolares} compras de dólar e ${r.cdi} movimentos da caixinha.`
             })
           }}
         >
@@ -94,8 +94,7 @@ export function PlanilhaCard() {
       <StatusMsg status={status} />
       <div className="mt-4">
         <Info tone="blue">
-          Use o app para anotar e toque em <b>Salvar</b>. Se mexer direto na planilha, toque em <b>Trazer</b> antes de anotar no app de novo. O CDI fica só no
-          app.
+          Use o app para anotar e toque em <b>Salvar</b>. Se mexer direto na planilha, toque em <b>Trazer</b> antes de anotar no app de novo. O CDI vem dos registros 🌱 Guardei e ↩️ Resgatei da caixinha.
         </Info>
       </div>
       <button

@@ -219,8 +219,8 @@ export function Button({ children, onClick, variant = 'primary', type = 'button'
 export function MovRow({ m, onClick }: { m: Movimento; onClick?: () => void }) {
   const cat = categoria(m.categoria)
   const tipo = cat?.tipo ?? 'Gasto'
-  const sinal = tipo === 'Entrada' ? '+' : '−'
-  const color = tipo === 'Entrada' ? 'text-good' : tipo === 'Investimento' ? 'text-teal' : 'text-ink'
+  const sinal = tipo === 'Entrada' || tipo === 'Resgate' ? '+' : '−'
+  const color = tipo === 'Entrada' ? 'text-good' : tipo === 'Investimento' || tipo === 'Resgate' ? 'text-teal' : 'text-ink'
   return (
     <button onClick={onClick} className="press flex w-full items-center gap-3 px-4 py-3 text-left">
       <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-xl" style={{ background: (cat?.cor ?? '#8D99AE') + '22' }}>

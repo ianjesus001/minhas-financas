@@ -1,4 +1,5 @@
-export type TipoCategoria = 'Gasto' | 'Entrada' | 'Investimento'
+/** Resgate: dinheiro que volta da caixinha. Diminui o guardado e não conta como entrada. */
+export type TipoCategoria = 'Gasto' | 'Entrada' | 'Investimento' | 'Resgate'
 
 export interface Categoria {
   /** Texto exato usado na lista do Excel (aba Listas). Não mude sem regenerar a planilha. */
@@ -27,10 +28,11 @@ export const CATEGORIAS: Categoria[] = [
   { nome: '↩️ Outras entradas', emoji: '↩️', curto: 'Outras entradas', tipo: 'Entrada', cor: '#1B8A5A' },
   { nome: '🌱 Guardei no CDI', emoji: '🌱', curto: 'Guardei no CDI', tipo: 'Investimento', cor: '#2A9D8F' },
   { nome: '💵 Comprei dólar', emoji: '💵', curto: 'Comprei dólar', tipo: 'Investimento', cor: '#457B9D' },
+  { nome: '↩️ Resgatei da caixinha', emoji: '↩️', curto: 'Resgatei da caixinha', tipo: 'Resgate', cor: '#2A9D8F' },
 ]
 
 export const CAT_CDI = '🌱 Guardei no CDI'
 export const CAT_DOLAR = '💵 Comprei dólar'
-export const CAT_RESGATE = '↩️ Outras entradas'
+export const CAT_RESGATE = '↩️ Resgatei da caixinha'
 
 export const categoria = (nome: string) => CATEGORIAS.find((c) => c.nome === nome)

@@ -133,16 +133,17 @@ export function salvarLancamento(l: Lancamento, idAntigo?: string) {
     if (l.tipo === 'gasto' || l.tipo === 'entrada') {
       movimentos.push({ id, data: l.data, descricao: l.descricao, categoria: l.categoria, valor: l.valor })
     } else if (l.tipo === 'cdi') {
+      // Todo depósito/resgate também vai para o Meu Mês: é de lá que a planilha monta a aba Meu CDI.
+      // Não conta como gasto nem como entrada, então não mexe no "Sobrou" nem no acumulado.
       cdi.push({ id, data: l.data, tipo: l.resgate ? 'Resgatei' : 'Guardei', valor: l.valor, nota: l.nota })
-      if (l.noMes)
-        movimentos.push({
-          id: novoId(),
-          linkId: id,
-          data: l.data,
-          descricao: l.nota || (l.resgate ? 'Resgate do CDI' : 'Guardei no CDI'),
-          categoria: l.resgate ? CAT_RESGATE : CAT_CDI,
-          valor: l.valor,
-        })
+      movimentos.push({
+        id: novoId(),
+        linkId: id,
+        data: l.data,
+        descricao: l.nota || (l.resgate ? 'Resgate da caixinha' : 'Guardei na caixinha'),
+        categoria: l.resgate ? CAT_RESGATE : CAT_CDI,
+        valor: l.valor,
+      })
     } else if (l.tipo === 'dolar') {
       const opcional = (v?: number) => (v && v > 0 ? v : undefined)
       dolares.push({

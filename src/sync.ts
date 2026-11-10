@@ -1,9 +1,9 @@
 // Sincronização com a planilha do Google "Meus Reais e Dólares" pelo Apps Script (tools/apps-script/Codigo.gs).
 // Não é tempo real: "Salvar" manda reais e dólares do app para a planilha (substitui as abas)
-// e "Trazer" faz o contrário. O CDI fica só no app (a planilha não tem essa aba).
-import { CAT_CDI, CAT_DOLAR } from './categorias'
+// e "Trazer" faz o contrário. O CDI vem das linhas Guardei/Resgatei da caixinha do Meus Reais.
+import { CAT_CDI, CAT_DOLAR, CAT_RESGATE } from './categorias'
 import { getState, novoId, setState } from './store'
-import type { AppState, CompraDolar, ISODate, Movimento } from './types'
+import type { AppState, CompraDolar, ISODate, MovCDI, Movimento } from './types'
 
 /** Nomes que mudam entre o app e a planilha. */
 const CAT_APP_PARA_PLANILHA: Record<string, string> = { [CAT_CDI]: '🌱 Guardei (caixinha / CDI)' }
@@ -126,14 +126,17 @@ export async function salvarNaPlanilha(): Promise<{ reais: number; dolares: numb
   return r
 }
 
-/** Substitui reais e dólares do app pelos da planilha. O CDI do app não muda. */
-export async function trazerDaPlanilha(): Promise<{ reais: number; dolares: number }> {
+/**
+ * Substitui reais, dólares e CDI do app pelos da planilha. O CDI é montado a partir das linhas
+ * "Guardei" e "Resgatei da caixinha" do Meus Reais, igual à aba Meu CDI da planilha.
+ */
+export async function trazerDaPlanilha(): Promise<{ reais: number; dolares: number; cdi: number }> {
   const s0 = getState()
   const r = await chamar<{ reais: LinhaReais[]; dolares: LinhaDolar[] }>(s0.config.planilhaLink)
-  setState((s) => marcarSincronizado({ ...s, ...deLinhas(r.reais, r.dolares, s) }))
-  return { reais: r.reais.length, dolares: r.dolares.length }
+  const novo = deLinhas(r.reais, r.dolares)
+  setState((s) => marcarSincronizado({ ...s, ...novo }))
+  return { reais: novo.movimentos.length, dolares: novo.dolares.length, cdi: novo.cdi.length }
 }
-
 /** Uma data digitada na coluna de descrição chega como "Tue Nov 10 2026 05:00:00 GMT…": vira "10/11/2026". */
 function limparDescricao(s: string): string {
   if (!/^\w{3} \w{3} \d{1,2} \d{4} \d{2}:\d{2}/.test(s)) return s
@@ -141,8 +144,11 @@ function limparDescricao(s: string): string {
   return isNaN(d.getTime()) ? s : d.toLocaleDateString('pt-BR')
 }
 
-/** Monta os registros do app e liga cada saída do Meu Mês à compra de dólar / depósito do mesmo dia e valor. */
-export function deLinhas(reais: LinhaReais[], dolares: LinhaDolar[], s: AppState): Pick<AppState, 'movimentos' | 'dolares'> {
+/**
+ * Monta os registros do app a partir das linhas da planilha. Cada "Comprei dólar" é ligado à
+ * compra do mesmo dia e valor; cada "Guardei"/"Resgatei da caixinha" vira um registro do CDI.
+ */
+export function deLinhas(reais: LinhaReais[], dolares: LinhaDolar[]): Pick<AppState, 'movimentos' | 'dolares' | 'cdi'> {
   const compras: CompraDolar[] = dolares.map((d) => ({
     id: novoId(),
     data: d.data,
@@ -152,21 +158,24 @@ export function deLinhas(reais: LinhaReais[], dolares: LinhaDolar[], s: AppState
     ...(d.cambio ? { cambio: d.cambio } : {}),
     ...(d.taxas ? { taxas: d.taxas } : {}),
   }))
-  const livres = new Set([...compras.map((c) => c.id), ...s.cdi.map((c) => c.id)])
+  const livres = new Set(compras.map((c) => c.id))
+  const cdi: MovCDI[] = []
   const movimentos: Movimento[] = reais.map((l) => {
     const categoria = CAT_PLANILHA_PARA_APP[l.categoria] ?? l.categoria
-    const m: Movimento = { id: novoId(), data: l.data, descricao: limparDescricao(l.descricao), categoria, valor: l.valor }
-    const par =
-      categoria === CAT_DOLAR
-        ? compras.find((c) => livres.has(c.id) && c.data === l.data && Math.abs(c.pagouBRL - l.valor) < 0.005)
-        : categoria === CAT_CDI
-          ? s.cdi.find((c) => livres.has(c.id) && c.tipo === 'Guardei' && c.data === l.data && Math.abs(c.valor - l.valor) < 0.005)
-          : undefined
-    if (par) {
-      m.linkId = par.id
-      livres.delete(par.id)
+    const descricao = limparDescricao(l.descricao)
+    const m: Movimento = { id: novoId(), data: l.data, descricao, categoria, valor: l.valor }
+    if (categoria === CAT_DOLAR) {
+      const par = compras.find((c) => livres.has(c.id) && c.data === l.data && Math.abs(c.pagouBRL - l.valor) < 0.005)
+      if (par) {
+        m.linkId = par.id
+        livres.delete(par.id)
+      }
+    } else if (categoria === CAT_CDI || categoria === CAT_RESGATE) {
+      const c: MovCDI = { id: novoId(), data: l.data, tipo: categoria === CAT_CDI ? 'Guardei' : 'Resgatei', valor: l.valor, nota: descricao }
+      cdi.push(c)
+      m.linkId = c.id
     }
     return m
   })
-  return { movimentos, dolares: compras }
+  return { movimentos, dolares: compras, cdi }
 }

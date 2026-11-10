@@ -195,6 +195,7 @@ export function resumoMes(movs: Movimento[], key: string) {
     const tipo = categoria(m.categoria)?.tipo ?? 'Gasto'
     if (tipo === 'Entrada') entrou += m.valor
     else if (tipo === 'Investimento') guardei += m.valor
+    else if (tipo === 'Resgate') guardei -= m.valor
     else {
       gastei += m.valor
       porCat.set(m.categoria, (porCat.get(m.categoria) ?? 0) + m.valor)

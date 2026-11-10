@@ -163,17 +163,20 @@ function Form({ onClose, editar }: { onClose: () => void; editar: { id: string; 
         <input type="date" className={inputCls} value={data} max="2100-12-31" onChange={(e) => e.target.value && setData(e.target.value)} />
       </Field>
 
-      {(tipo === 'guardar' || tipo === 'dolar' || tipo === 'resgatar') && (
+      {tipo === 'dolar' && (
         <Toggle
           checked={noMes}
           onChange={setNoMes}
-          label={tipo === 'resgatar' ? 'Voltou para minha conta este mês' : 'Saiu da minha conta este mês'}
-          hint={
-            tipo === 'resgatar'
-              ? 'Aparece como entrada no Meu Mês.'
-              : 'Aparece no Meu Mês como dinheiro guardado. Desligue se era um dinheiro que você já tinha guardado antes.'
-          }
+          label="Saiu da minha conta"
+          hint="Aparece no Meu Mês como dinheiro guardado (não conta como gasto). Desligue só se esse dinheiro já estava anotado de outro jeito."
         />
+      )}
+      {(tipo === 'guardar' || tipo === 'resgatar') && (
+        <p className="mb-4 rounded-2xl bg-teal-soft px-4 py-3 text-xs">
+          {tipo === 'guardar'
+            ? '🌱 Aparece no Meu Mês como guardado e na aba CDI. Não conta como gasto.'
+            : '↩️ Aparece no Meu Mês como resgate e diminui o que você tem no CDI. Não conta como entrada nova.'}
+        </p>
       )}
 
       <div className="flex flex-col gap-2 pt-1 pb-2">
