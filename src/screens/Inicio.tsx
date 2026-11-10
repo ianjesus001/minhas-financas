@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { hoje, mesKey, nomeMes, resumoCDI, resumoDolar, resumoMes, somaMes } from '../calc'
+import { hoje, mesKey, nomeMes, resumoCDI, resumoDolar, resumoMes, saldoReais, somaMes, toISO } from '../calc'
 import { categoria } from '../categorias'
 import { fmtBRL, fmtData, fmtPct0, fmtUSD } from '../format'
 import { useMercado } from '../mercado'
@@ -58,6 +58,12 @@ export function Inicio({ onEdit, onSettings, onGo }: { onEdit: (id: string) => v
           </button>
         </div>
       </section>
+
+      {s.movimentos.length > 0 && (
+        <div className="mt-4">
+          <SaldoReais saldo={saldoReais(s.movimentos).saldo} hint="tudo que entrou − tudo que saiu" onClick={() => onGo('mes')} />
+        </div>
+      )}
 
       <SectionTitle
         action={
@@ -140,6 +146,25 @@ function MesCard({ mes }: { mes: ReturnType<typeof resumoMes> }) {
   )
 }
 
+/** Último dia do mês 'YYYY-MM' (para o mês atual, hoje). */
+function fimDoMes(key: string) {
+  if (key === mesKey(hoje())) return hoje()
+  return `${somaMes(key, 1)}-01` > hoje() ? hoje() : toISO(new Date(Number(key.slice(0, 4)), Number(key.slice(5, 7)), 0))
+}
+
+function SaldoReais({ saldo, hint, onClick }: { saldo: number; hint: string; onClick?: () => void }) {
+  return (
+    <button onClick={onClick} disabled={!onClick} className="press card flex w-full items-center gap-4 p-4 text-left disabled:active:scale-100">
+      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-coral-soft text-2xl">💰</span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm text-muted">Saldo em reais</span>
+        <span className={`num block text-2xl font-extrabold ${saldo < 0 ? 'text-bad' : ''}`}>{fmtBRL(saldo)}</span>
+        <span className="block truncate text-[11px] text-muted">{hint}</span>
+      </span>
+    </button>
+  )
+}
+
 export function Mes({ onEdit }: { onEdit: (id: string) => void }) {
   const s = useAppState()
   const [key, setKey] = useState(mesKey(hoje()))
@@ -165,6 +190,15 @@ export function Mes({ onEdit }: { onEdit: (id: string) => void }) {
       </div>
 
       <MesCard mes={mes} />
+
+      {s.movimentos.length > 0 && (
+        <div className="mt-4">
+          <SaldoReais
+            saldo={saldoReais(s.movimentos, fimDoMes(key)).saldo}
+            hint={key === mesKey(hoje()) ? 'hoje, somando todos os meses' : `no fim de ${nomeMes(key).toLowerCase()}, somando todos os meses`}
+          />
+        </div>
+      )}
 
       {mes.categorias.length > 0 && (
         <>
