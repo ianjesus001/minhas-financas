@@ -224,6 +224,37 @@ function ajustarPlanilha() {
   Logger.log('Planilha ajustada.');
 }
 
+/**
+ * Rodar uma vez no editor. No Google Sheets só a PRIMEIRA regra de formatação condicional
+ * que bate é aplicada, então as listras (cinza) "comiam" o verde/vermelho em linhas
+ * alternadas. Aqui: a coluna Acumulado fica neutra (vermelha só se negativa) e as regras de
+ * cor do texto passam para antes das listras.
+ */
+function ajustarCores() {
+  const sep = separador();
+  const f = function (formula) { return sep === ',' ? formula : formula.replace(/,/g, ';'); };
+  const formulaDe = function (rg) {
+    const c = rg.getBooleanCondition();
+    return c ? String(c.getCriteriaValues()[0] || '') : '';
+  };
+  [ABA_REAIS, ABA_DOLARES].forEach(function (nome) {
+    const s = aba(nome);
+    let regras = s.getConditionalFormatRules();
+    if (nome === ABA_REAIS) {
+      // tira o verde/vermelho da coluna G (Acumulado) e põe só o vermelho para negativo
+      regras = regras.filter(function (rg) {
+        return !(formulaDe(rg).indexOf('ISNUMBER') >= 0 && rg.getRanges().some(function (x) { return x.getA1Notation().indexOf('G6') === 0; }));
+      });
+      regras.unshift(SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied(f('=AND(ISNUMBER(G6),G6<0)'))
+        .setFontColor('#C0392B').setBold(true).setRanges([s.getRange(PRIMEIRA, 7, LINHAS, 1)]).build());
+    }
+    const cores = regras.filter(function (rg) { return formulaDe(rg).indexOf('ISNUMBER') >= 0; });
+    const resto = regras.filter(function (rg) { return formulaDe(rg).indexOf('ISNUMBER') < 0; });
+    s.setConditionalFormatRules(cores.concat(resto));
+  });
+  Logger.log('Cores ajustadas.');
+}
+
 /** Guarda uma cópia dos dados atuais antes de sobrescrever. */
 function backup() {
   const ss = SpreadsheetApp.getActive();
