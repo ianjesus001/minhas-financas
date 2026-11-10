@@ -85,7 +85,20 @@ export function resumoCDI(state: AppState, m: Mercado, ate: ISODate = hoje()) {
     ir += sinal * c.valor * (fator - 1) * aliquotaIR(diasCorridos(c.data, ate))
   }
   ir = Math.max(0, ir)
-  const app = state.config.saldoApp
+  const estimado = saldo
+  // Com o saldo real do banco numa data, ele vira o ponto de partida: rende o CDI oficial desde
+  // aquela data, mais os depósitos/resgates feitos depois (o banco já desconta IR/IOF dos resgates).
+  const { saldoApp, saldoAppData } = state.config
+  const usaBanco = saldoApp !== null && !!saldoAppData && saldoAppData <= ate
+  if (usaBanco) {
+    saldo = saldoApp * fatorCDI(m, saldoAppData, ate, state.config.pctCdi, dia)
+    for (const c of state.cdi) {
+      if (c.data <= saldoAppData) continue
+      const sinal = c.tipo === 'Resgatei' ? -1 : 1
+      saldo += sinal * c.valor * fatorCDI(m, c.data, ate, state.config.pctCdi, dia)
+    }
+    ir = Math.max(0, Math.min(ir, (saldo - colocado) * 0.225))
+  }
   return {
     colocado,
     saldo,
@@ -93,8 +106,9 @@ export function resumoCDI(state: AppState, m: Mercado, ate: ISODate = hoje()) {
     ir,
     liquido: saldo - ir,
     temSerie,
-    /** Diferença entre o saldo do banco (se ela informou) e o calculado. */
-    diferencaApp: app !== null ? app - saldo : null,
+    /** Valor só com as contas do app, para comparar com o banco. */
+    estimado,
+    usaBanco,
   }
 }
 

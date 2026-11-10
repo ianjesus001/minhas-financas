@@ -3,7 +3,7 @@ import { hoje, resumoCDI, resumoDolar, taxas, type CompraAnalise } from '../calc
 import { fmtBRL, fmtData, fmtPct, fmtPct0, fmtUSD } from '../format'
 import { useMercado, type Mercado } from '../mercado'
 import { updateConfig, useAppState } from '../store'
-import { Button, Details, Donut, Empty, Field, Header, Info, MoneyInput, SectionTitle, Sheet, Stat } from '../ui'
+import { Button, Details, Donut, Empty, Field, Header, Info, MoneyInput, SectionTitle, Sheet, Stat, inputCls } from '../ui'
 
 const fmtCot = (v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`
 const sinal = (v: number) => (v > 0 ? '+' : v < 0 ? '−' : '')
@@ -35,7 +35,11 @@ export function CDI({ onEdit }: { onEdit: (id: string) => void }) {
         <p className="text-sm text-white/80">Tenho no CDI</p>
         <p className="num mt-1 text-[2.4rem] leading-none font-extrabold">{fmtBRL(r.saldo)}</p>
         <p className="mt-2 text-xs text-white/80">
-          {r.temSerie ? '📡 Calculado com o CDI oficial de cada dia' : 'Estimativa (sem internet ainda)'}
+          {r.usaBanco && s.config.saldoAppData
+            ? `🏦 Saldo do banco em ${fmtData(s.config.saldoAppData)} + CDI oficial desde então`
+            : r.temSerie
+              ? '📡 Calculado com o CDI oficial de cada dia'
+              : 'Estimativa (sem internet ainda)'}
         </p>
         <div className="mt-4 grid grid-cols-2 gap-2">
           <div className="rounded-2xl bg-white/15 p-3">
@@ -48,16 +52,9 @@ export function CDI({ onEdit }: { onEdit: (id: string) => void }) {
           </div>
         </div>
         <button onClick={() => setConferir(true)} className="press mt-3 w-full rounded-2xl bg-white py-3 text-sm font-bold text-teal">
-          🔍 Conferir com o app do banco
+          🏦 Atualizar com o saldo do banco
         </button>
       </section>
-
-      {r.diferencaApp !== null && s.config.saldoAppData && (
-        <p className="mt-3 rounded-2xl bg-white px-4 py-3 text-sm shadow-sm">
-          Em {fmtData(s.config.saldoAppData)} o banco mostrava <b className="num">{fmtBRL(s.config.saldoApp!)}</b>.{' '}
-          {Math.abs(r.diferencaApp) < 0.5 ? '✅ Bate com o app!' : `Diferença de ${fmtBRL(Math.abs(r.diferencaApp))} — confira se falta anotar algo.`}
-        </p>
-      )}
 
       <div className="card mt-4 grid grid-cols-2 gap-4 p-5">
         <Stat label="CDI hoje (ao ano)" value={fmtPct(t.cdi)} hint={`você recebe ${fmtPct0(s.config.pctCdi)} dele`} />
@@ -121,43 +118,40 @@ export function CDI({ onEdit }: { onEdit: (id: string) => void }) {
         </Details>
       </div>
 
-      <Sheet open={conferir} onClose={() => setConferir(false)} title="Conferir com o banco">
-        {conferir && <ConferirForm onClose={() => setConferir(false)} calculado={r.saldo} />}
+      <Sheet open={conferir} onClose={() => setConferir(false)} title="Saldo do banco">
+        {conferir && <SaldoBancoForm onClose={() => setConferir(false)} calculado={r.estimado} />}
       </Sheet>
     </div>
   )
 }
 
-function ConferirForm({ onClose, calculado }: { onClose: () => void; calculado: number }) {
+function SaldoBancoForm({ onClose, calculado }: { onClose: () => void; calculado: number }) {
   const s = useAppState()
   const [v, setV] = useState(0)
-  const dif = v > 0 ? v - calculado : null
+  const [data, setData] = useState(hoje())
   return (
     <div>
       <Info tone="teal">
-        O app calculou <b className="num">{fmtBRL(calculado)}</b>. Abra o app do banco, veja quanto tem na caixinha e escreva aqui para conferir.
+        Abra o app do banco e escreva quanto tem na caixinha. Esse valor vira o ponto de partida: a partir dele o app soma o CDI oficial de cada dia e os
+        próximos depósitos e resgates. Só com as contas do app daria <b className="num">{fmtBRL(calculado)}</b> (sem os descontos de IR/IOF dos resgates).
       </Info>
       <div className="mt-4">
         <Field label="Quanto aparece no app do banco">
           <MoneyInput value={v} onChange={setV} big autoFocus />
         </Field>
+        <Field label="Em que dia você viu esse saldo">
+          <input type="date" className={inputCls} value={data} max={hoje()} onChange={(e) => e.target.value && setData(e.target.value)} />
+        </Field>
       </div>
-      {dif !== null && (
-        <p className="mb-4 rounded-2xl bg-bg px-4 py-3 text-sm">
-          {Math.abs(dif) < 0.5
-            ? '✅ Bate! A diferença é de centavos (arredondamento do banco).'
-            : `Diferença de ${fmtBRL(Math.abs(dif))}. Talvez falte anotar algum depósito ou resgate, ou a data de algum esteja diferente.`}
-        </p>
-      )}
       <div className="flex flex-col gap-2 pb-2">
         <Button
           disabled={!(v > 0)}
           onClick={() => {
-            updateConfig({ saldoApp: v, saldoAppData: hoje() })
+            updateConfig({ saldoApp: v, saldoAppData: data })
             onClose()
           }}
         >
-          Salvar conferência
+          Salvar saldo
         </Button>
         {s.config.saldoApp !== null && (
           <Button
@@ -167,7 +161,7 @@ function ConferirForm({ onClose, calculado }: { onClose: () => void; calculado: 
               onClose()
             }}
           >
-            Apagar conferência
+            Voltar a usar só as contas do app
           </Button>
         )}
       </div>
