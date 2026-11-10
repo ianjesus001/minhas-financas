@@ -163,6 +163,7 @@ dvn = DataValidation(type="decimal", operator="greaterThanOrEqual", formula1="0"
                      showErrorMessage=True, errorTitle="Valor", error="Escreva o valor sem sinal de menos. A categoria já diz se entrou ou saiu.")
 ws.add_data_validation(dvn); dvn.add(f"E{FIRST}:E{LAST}")
 # No Google Sheets só a primeira regra condicional vale: a cor do texto vem antes das listras.
+ws.conditional_formatting.add(f"G{FIRST}:G{LAST}", FormulaRule(formula=[f'AND(ISNUMBER(G{FIRST}),G{FIRST}=0)'], font=Font(name=FONT, color="9AA0AC")))
 ws.conditional_formatting.add(f"G{FIRST}:G{LAST}", FormulaRule(formula=[f'AND(ISNUMBER(G{FIRST}),G{FIRST}<0)'], font=Font(name=FONT, color="C0392B", bold=True)))
 zebra(ws, f"F{FIRST}:G{LAST}")
 
