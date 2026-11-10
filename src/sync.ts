@@ -134,6 +134,13 @@ export async function trazerDaPlanilha(): Promise<{ reais: number; dolares: numb
   return { reais: r.reais.length, dolares: r.dolares.length }
 }
 
+/** Uma data digitada na coluna de descrição chega como "Tue Nov 10 2026 05:00:00 GMT…": vira "10/11/2026". */
+function limparDescricao(s: string): string {
+  if (!/^\w{3} \w{3} \d{1,2} \d{4} \d{2}:\d{2}/.test(s)) return s
+  const d = new Date(s)
+  return isNaN(d.getTime()) ? s : d.toLocaleDateString('pt-BR')
+}
+
 /** Monta os registros do app e liga cada saída do Meu Mês à compra de dólar / depósito do mesmo dia e valor. */
 export function deLinhas(reais: LinhaReais[], dolares: LinhaDolar[], s: AppState): Pick<AppState, 'movimentos' | 'dolares'> {
   const compras: CompraDolar[] = dolares.map((d) => ({
@@ -148,7 +155,7 @@ export function deLinhas(reais: LinhaReais[], dolares: LinhaDolar[], s: AppState
   const livres = new Set([...compras.map((c) => c.id), ...s.cdi.map((c) => c.id)])
   const movimentos: Movimento[] = reais.map((l) => {
     const categoria = CAT_PLANILHA_PARA_APP[l.categoria] ?? l.categoria
-    const m: Movimento = { id: novoId(), data: l.data, descricao: l.descricao, categoria, valor: l.valor }
+    const m: Movimento = { id: novoId(), data: l.data, descricao: limparDescricao(l.descricao), categoria, valor: l.valor }
     const par =
       categoria === CAT_DOLAR
         ? compras.find((c) => livres.has(c.id) && c.data === l.data && Math.abs(c.pagouBRL - l.valor) < 0.005)
