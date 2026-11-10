@@ -241,12 +241,15 @@ function ajustarCores() {
     const s = aba(nome);
     let regras = s.getConditionalFormatRules();
     if (nome === ABA_REAIS) {
-      // tira o verde/vermelho da coluna G (Acumulado) e põe só o vermelho para negativo
+      // coluna G (Acumulado): preto se positivo, vermelho se negativo, cinza se zero
       regras = regras.filter(function (rg) {
         return !(formulaDe(rg).indexOf('ISNUMBER') >= 0 && rg.getRanges().some(function (x) { return x.getA1Notation().indexOf('G6') === 0; }));
       });
+      const g = s.getRange(PRIMEIRA, 7, LINHAS, 1);
       regras.unshift(SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied(f('=AND(ISNUMBER(G6),G6<0)'))
-        .setFontColor('#C0392B').setBold(true).setRanges([s.getRange(PRIMEIRA, 7, LINHAS, 1)]).build());
+        .setFontColor('#C0392B').setBold(true).setRanges([g]).build());
+      regras.unshift(SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied(f('=AND(ISNUMBER(G6),G6=0)'))
+        .setFontColor('#9AA0AC').setRanges([g]).build());
     }
     const cores = regras.filter(function (rg) { return formulaDe(rg).indexOf('ISNUMBER') >= 0; });
     const resto = regras.filter(function (rg) { return formulaDe(rg).indexOf('ISNUMBER') < 0; });
