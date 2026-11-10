@@ -162,8 +162,9 @@ ws.add_data_validation(dvd); dvd.add(f"B{FIRST}:B{LAST}")
 dvn = DataValidation(type="decimal", operator="greaterThanOrEqual", formula1="0", allow_blank=True,
                      showErrorMessage=True, errorTitle="Valor", error="Escreva o valor sem sinal de menos. A categoria já diz se entrou ou saiu.")
 ws.add_data_validation(dvn); dvn.add(f"E{FIRST}:E{LAST}")
+# No Google Sheets só a primeira regra condicional vale: a cor do texto vem antes das listras.
+ws.conditional_formatting.add(f"G{FIRST}:G{LAST}", FormulaRule(formula=[f'AND(ISNUMBER(G{FIRST}),G{FIRST}<0)'], font=Font(name=FONT, color="C0392B", bold=True)))
 zebra(ws, f"F{FIRST}:G{LAST}")
-gain_colors(ws, f"G{FIRST}:G{LAST}")
 
 put(ws, "I4", "📅 Mês que quero ver:", bold=True, size=11)
 inp(ws, "J4", "=DATE(YEAR(TODAY()),MONTH(TODAY()),1)", fmt='mmmm/yyyy', h="center")
@@ -247,8 +248,8 @@ for i, (d, onde, brl, usd, cambio, fee) in enumerate([
         (dt.date(2026, 11, 9), "Wise", 600, 104.40, 5.5174, 23.97)]):
     r = FIRST + i
     ws[f"B{r}"], ws[f"C{r}"], ws[f"D{r}"], ws[f"E{r}"], ws[f"F{r}"], ws[f"G{r}"] = d, onde, brl, usd, cambio, fee
+gain_colors(ws, f"J{FIRST}:M{LAST}")  # antes das listras (Google Sheets)
 zebra(ws, f"H{FIRST}:M{LAST}")
-gain_colors(ws, f"J{FIRST}:M{LAST}")
 
 section(ws, "O4:P4", "⚙️ Configuração", NAVY)
 put(ws, "O5", "📡 Dólar agora (Google Finance, automático)", bold=True, border=BOTTOM)
