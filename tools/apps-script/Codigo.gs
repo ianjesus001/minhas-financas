@@ -279,6 +279,112 @@ function ajustarCores() {
   Logger.log('Cores ajustadas.');
 }
 
+// ---------------------------------------------------------------- caixinha (nov/2026)
+
+const CAT_GUARDEI = '🌱 Guardei (caixinha / CDI)';
+const CAT_RESGATE = '↩️ Resgatei da caixinha';
+
+/**
+ * Rodar uma vez no editor. Cria a categoria "Resgatei da caixinha" (tipo Resgate: diminui o
+ * guardado e não conta como entrada), passa os resgates já anotados para ela e adiciona o
+ * bloco "Minha caixinha" no Resumo.
+ */
+function adicionarCaixinha() {
+  backup();
+  const sep = separador();
+  const f = function (formula) { return sep === ',' ? formula : formula.replace(/,/g, ';'); };
+  const L = aba('Listas');
+  const MR = aba(ABA_REAIS);
+  const R = aba('🏠 Resumo');
+  const MRq = "'" + ABA_REAIS + "'";
+
+  // 1. categoria nova na lista (a lista passa a ir até a linha 30)
+  let nomes = L.getRange('A2:A30').getValues().map(function (r) { return r[0]; });
+  if (nomes.indexOf(CAT_RESGATE) < 0) {
+    L.getRange(2 + nomes.indexOf(''), 1, 1, 2).setValues([[CAT_RESGATE, 'Resgate']]);
+    nomes = L.getRange('A2:A30').getValues().map(function (r) { return r[0]; });
+  }
+  const k = nomes.indexOf(CAT_RESGATE);
+
+  // 2. lista de categorias e coluna Tipo enxergam a lista maior
+  MR.getRange(PRIMEIRA, 4, LINHAS, 1).setDataValidation(SpreadsheetApp.newDataValidation()
+    .requireValueInRange(L.getRange('A2:A30'), true).setAllowInvalid(false)
+    .setHelpText('Escolha uma categoria da lista ▾').build());
+  const tipos = [];
+  for (let r = PRIMEIRA; r <= ULTIMA; r++) {
+    tipos.push([f('=IF(D' + r + '="","",IFERROR(INDEX(Listas!$B$2:$B$30,MATCH(D' + r + ',Listas!$A$2:$A$30,0)),"?"))')]);
+  }
+  MR.getRange(PRIMEIRA, 6, LINHAS, 1).setFormulas(tipos);
+
+  // 3. resumo do mês: guardado = investido − resgatado
+  const mes = ',$B:$B,">="&Listas!$E$1,$B:$B,"<="&Listas!$E$2)';
+  MR.getRange('J10').setFormula(f('=SUMIFS($E:$E,$F:$F,"Investimento"' + mes + '-SUMIFS($E:$E,$F:$F,"Resgate"' + mes));
+  MR.getRange('K10').setValue('dólar + caixinha − resgates');
+
+  // 4. linha da categoria nova na tabela por categoria
+  const linha = 15 + k;
+  MR.getRange('I31:L31').copyFormatToRange(MR, 9, 12, linha, linha);
+  MR.getRange(linha, 9, 1, 4).setFormulas([[
+    '=Listas!A' + (k + 2), '=Listas!B' + (k + 2),
+    f('=SUMIFS($E:$E,$D:$D,I' + linha + mes),
+    f('=IF(AND(J' + linha + '="Gasto",$J$8>0),K' + linha + '/$J$8,"")'),
+  ]]);
+
+  // 5. Resumo "Este mês": guardado líquido
+  const cur = function (tipo) {
+    return 'SUMIFS(' + MRq + '!$E:$E,' + MRq + '!$F:$F,"' + tipo + '",' + MRq + '!$B:$B,">="&Listas!$E$3,' + MRq + '!$B:$B,"<="&Listas!$E$4)';
+  };
+  R.getRange('G13').setFormula(f('=' + cur('Investimento') + '-' + cur('Resgate')));
+
+  // 6. bloco "Minha caixinha"
+  const TEAL = '#2A9D8F', SOFT = '#E3F4F1', AMARELO = '#FFF4C2', CINZA = '#7A7F8C';
+  const BRL = '"R$" #,##0.00;[Red]-"R$" #,##0.00';
+  const e = MRq + '!$E$6:$E$405', d = MRq + '!$D$6:$D$405', b = MRq + '!$B$6:$B$405';
+  R.getRange('B16:G16').merge().setValue('🌱 Minha caixinha (CDI)').setBackground(TEAL)
+    .setFontColor('#FFFFFF').setFontWeight('bold').setFontSize(11).setFontFamily('Arial');
+  R.setRowHeight(16, 26);
+  const bloco = R.getRange('B17:G19');
+  bloco.setBackground(SOFT).setFontFamily('Arial').setFontSize(10).setVerticalAlignment('middle')
+    .setBorder(true, true, true, true, true, true, '#D9DCE3', SpreadsheetApp.BorderStyle.SOLID);
+  R.getRange('B17:B19').setFontWeight('bold');
+  R.getRange('D17:D19').setFontWeight('bold');
+  R.getRange('F17').setFontWeight('bold');
+  R.getRange('B17:G19').setValues([
+    ['💪 Coloquei do meu bolso', '', '✍️ CDI ao ano (atualize de vez em quando)', 0.1365, '✍️ % do CDI que o banco paga', 1],
+    ['🌱 Deve ter hoje (estimativa)', '', '🎉 Rendeu (estimativa)', '', '', ''],
+    ['✍️ Saldo no app do banco (opcional)', '', '🎉 Rendeu de verdade', '', '', ''],
+  ]);
+  R.getRange('B17:G19').setWrap(true);
+  R.setRowHeights(17, 3, 34);
+  R.getRange('C17').setFormula(f('=SUMIFS(' + e + ',' + d + ',"' + CAT_GUARDEI + '")-SUMIFS(' + e + ',' + d + ',"' + CAT_RESGATE + '")'));
+  R.getRange('C18').setFormula(f('=SUMPRODUCT(((' + d + '="' + CAT_GUARDEI + '")-(' + d + '="' + CAT_RESGATE + '"))*' + e +
+    '*(1+E17*G17)^((TODAY()-' + b + ')/365))'));
+  R.getRange('E18').setFormula('=C18-C17');
+  R.getRange('E19').setFormula(f('=IF(C19="","",C19-C17)'));
+  R.getRange('C17:C19').setNumberFormat(BRL).setFontWeight('bold').setHorizontalAlignment('right');
+  R.getRange('E18:E19').setNumberFormat(BRL).setFontWeight('bold').setHorizontalAlignment('right');
+  R.getRange('E17').setNumberFormat('0.00%').setBackground(AMARELO).setHorizontalAlignment('right');
+  R.getRange('G17').setNumberFormat('0%').setBackground(AMARELO).setHorizontalAlignment('right');
+  R.getRange('C19').setBackground(AMARELO);
+  R.getRange('C18').setFontColor(TEAL).setFontSize(12);
+  R.getRange('B20:G20').merge().setValue('O app calcula o valor exato com o CDI oficial de cada dia. Aqui é uma estimativa com a taxa acima; ' +
+    'para o valor real, escreva o saldo do app do banco.').setFontColor(CINZA).setFontStyle('italic').setFontSize(9)
+    .setFontFamily('Arial').setWrap(true);
+  R.setRowHeight(20, 30);
+
+  // 7. resgates já anotados vão para a categoria nova
+  const v = MR.getRange(PRIMEIRA, 2, LINHAS, 4).getValues();
+  const log = [];
+  v.forEach(function (l, i) {
+    const desc = String(l[1]);
+    if (l[2] === '↩️ Outras entradas' && /resgat|regast|retirad/i.test(desc) && /cdi|caixinha|inter/i.test(desc)) {
+      MR.getRange(PRIMEIRA + i, 4).setValue(CAT_RESGATE);
+      log.push(desc + ' ' + l[3]);
+    }
+  });
+  Logger.log('Caixinha pronta. Resgates recategorizados: ' + log.join(', '));
+}
+
 /** Guarda uma cópia dos dados atuais antes de sobrescrever. */
 function backup() {
   const ss = SpreadsheetApp.getActive();
