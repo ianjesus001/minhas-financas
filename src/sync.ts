@@ -107,8 +107,9 @@ export const hashDados = (s: AppState) => hashTexto(JSON.stringify(paraPlanilha(
 
 /** O app tem reais/dólares diferentes do que estava na planilha na última sincronização. */
 export function mudancasPendentes(s: AppState): boolean {
-  if (!s.config.planilhaLink) return false
-  return s.config.planilhaSync?.hash !== hashDados(s)
+  // Antes do primeiro Trazer/Salvar não há base de comparação: o app só tem os dados de exemplo.
+  if (!s.config.planilhaLink || !s.config.planilhaSync) return false
+  return s.config.planilhaSync.hash !== hashDados(s)
 }
 
 const marcarSincronizado = (s: AppState): AppState => ({

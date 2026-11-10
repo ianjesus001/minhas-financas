@@ -63,25 +63,30 @@ export function PlanilhaCard() {
         {pendente && c.planilhaSync ? ' · há mudanças não salvas' : ''}
       </p>
       <div className="flex flex-col gap-2">
+        {/* Antes do primeiro Trazer o app só tem dados de exemplo: Salvar apagaria a planilha. */}
+        {c.planilhaSync && (
+          <Button
+            disabled={status?.tipo === 'carregando'}
+            onClick={() =>
+              rodar('Salvando na planilha...', async () => {
+                const r = await salvarNaPlanilha()
+                return `Salvo! ${r.reais} registros em reais e ${r.dolares} compras de dólar.`
+              })
+            }
+          >
+            ⬆️ Salvar na planilha
+          </Button>
+        )}
         <Button
-          disabled={status?.tipo === 'carregando'}
-          onClick={() =>
-            rodar('Salvando na planilha...', async () => {
-              const r = await salvarNaPlanilha()
-              return `Salvo! ${r.reais} registros em reais e ${r.dolares} compras de dólar.`
-            })
-          }
-        >
-          ⬆️ Salvar na planilha
-        </Button>
-        <Button
-          variant="soft"
+          variant={c.planilhaSync ? 'soft' : 'primary'}
           disabled={status?.tipo === 'carregando'}
           onClick={() => {
-            const aviso = pendente
-              ? 'Você tem mudanças no app que ainda não foram salvas na planilha e vão se perder. Trazer mesmo assim?'
-              : 'Isso vai trocar os reais, dólares e o CDI do app pelos da planilha. Continuar?'
-            if (!confirm(aviso)) return
+            if (c.planilhaSync) {
+              const aviso = pendente
+                ? 'Você tem mudanças no app que ainda não foram salvas na planilha e vão se perder. Trazer mesmo assim?'
+                : 'Isso vai trocar os reais, dólares e o CDI do app pelos da planilha. Continuar?'
+              if (!confirm(aviso)) return
+            }
             rodar('Trazendo da planilha...', async () => {
               const r = await trazerDaPlanilha()
               return `Pronto! ${r.reais} registros em reais, ${r.dolares} compras de dólar e ${r.cdi} movimentos da caixinha.`
@@ -90,6 +95,7 @@ export function PlanilhaCard() {
         >
           ⬇️ Trazer da planilha
         </Button>
+        {!c.planilhaSync && <p className="text-center text-xs text-muted">Depois de trazer, aparece o botão Salvar na planilha.</p>}
       </div>
       <StatusMsg status={status} />
       <div className="mt-4">
